@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getDBConnection } from '../lib/duckdb';
+import { getDBConnection, getDB } from '../lib/duckdb';
 
 export function useDuckDB() {
   const [isReady, setIsReady] = useState(false);
@@ -12,9 +12,14 @@ export function useDuckDB() {
   }, []);
 
   const query = async (sql: string) => {
-    const conn = await getDBConnection();
-    const result = await conn.query(sql);
-    return result.toArray().map((row: any) => row.toJSON());
+    const db = await getDB();
+    const localConn = await db.connect();
+    try {
+      const result = await localConn.query(sql);
+      return result.toArray().map((row: any) => row.toJSON());
+    } finally {
+      await localConn.close();
+    }
   };
 
   return { isReady, error, query };

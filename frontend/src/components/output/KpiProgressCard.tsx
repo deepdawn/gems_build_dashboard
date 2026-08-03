@@ -8,6 +8,7 @@ interface Props {
   comparisonColor?: 'blue' | 'red';
   extraInfo?: string;
   targetValue?: string;
+  avgComparisonText?: React.ReactNode;
 }
 
 export const KpiProgressCard: React.FC<Props> = ({ 
@@ -17,7 +18,8 @@ export const KpiProgressCard: React.FC<Props> = ({
   comparisonText,
   comparisonColor = 'blue',
   extraInfo,
-  targetValue
+  targetValue,
+  avgComparisonText
 }) => {
   return (
     <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm flex flex-col justify-between min-h-[220px]">
@@ -59,6 +61,11 @@ export const KpiProgressCard: React.FC<Props> = ({
         <span className={comparisonColor === 'blue' ? 'text-blue-600' : 'text-red-500'}>
           {comparisonText}
         </span>
+        {avgComparisonText && (
+          <div className="text-[11px] text-slate-500 mt-1 font-medium">
+            {avgComparisonText}
+          </div>
+        )}
       </div>
     </div>
   );

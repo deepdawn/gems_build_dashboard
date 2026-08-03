@@ -12,7 +12,7 @@ export const CardA_Unused: React.FC<Props> = ({ data = [], currentRate = 0 }) =>
     <div className="bg-white border border-green-200 rounded-lg p-5 shadow-sm text-left flex flex-col h-[190px]">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <div className="bg-[#438B31] text-white w-6 h-6 rounded flex items-center justify-center font-bold text-sm shadow-sm">C</div>
+          <div className="bg-[#438B31] text-white w-6 h-6 rounded flex items-center justify-center font-bold text-sm shadow-sm">D</div>
           <span className="font-bold text-green-900 text-lg">72시간 미사용</span>
         </div>
         <div className="text-2xl font-black text-slate-800">{currentRate.toFixed(1)}%</div>

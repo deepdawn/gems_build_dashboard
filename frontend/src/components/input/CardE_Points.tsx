@@ -8,6 +8,8 @@ interface CardEProps {
   activeZoneRate?: number;
   activeZoneRateMoM?: number;
   activeZoneRateCompanyDiff?: number;
+  prevActiveZoneRate?: number;
+  companyActiveZoneRate?: number;
   comparisonLabel?: string;
 }
 
@@ -16,6 +18,8 @@ export const CardE_Points: React.FC<CardEProps> = ({
   activeZoneRate = 0,
   activeZoneRateMoM = 0,
   activeZoneRateCompanyDiff = 0,
+  prevActiveZoneRate = 0,
+  companyActiveZoneRate = 0,
   comparisonLabel = '전월'
 }) => {
   const chartData = [
@@ -33,12 +37,12 @@ export const CardE_Points: React.FC<CardEProps> = ({
       <div className="flex justify-between items-center flex-grow mt-2">
         <div className="flex gap-6">
           <div className="flex flex-col">
-            <span className="text-[13px] font-bold text-slate-500 mb-2 text-center">관리 배치존</span>
+            <span className="text-[13px] font-bold text-slate-500 mb-2 text-center whitespace-nowrap">캠프 소속 배치존</span>
             <div className="text-[40px] font-black tracking-tight leading-none text-center">{Math.round(managementZoneCount).toLocaleString()}<span className="text-lg">개</span></div>
           </div>
           <div className="w-[1px] h-[50px] bg-slate-200 self-center"></div>
           <div className="flex flex-col">
-            <span className="text-[13px] font-bold text-slate-500 mb-2 text-center">배치존 중 배치</span>
+            <span className="text-[13px] font-bold text-slate-500 mb-2 text-center whitespace-nowrap">배치존 중 1대 이상 배치</span>
             <div className="text-[40px] font-black tracking-tight leading-none text-center">{Math.round(activeZoneRate)}<span className="text-lg">%</span></div>
           </div>
         </div>
@@ -69,7 +73,7 @@ export const CardE_Points: React.FC<CardEProps> = ({
       </div>
       
       <div className="text-[13px] font-semibold text-slate-500 mt-2">
-        {comparisonLabel} <span className={activeZoneRateMoM >= 0 ? "text-blue-600" : "text-red-500"}>{activeZoneRateMoM > 0 ? '+' : ''}{activeZoneRateMoM.toFixed(1)}%p</span> / 전사 <span className={activeZoneRateCompanyDiff >= 0 ? "text-blue-600" : "text-red-500"}>{activeZoneRateCompanyDiff > 0 ? '+' : ''}{activeZoneRateCompanyDiff.toFixed(1)}%p</span>
+        {comparisonLabel}({prevActiveZoneRate.toFixed(1)}%) <span className={activeZoneRateMoM >= 0 ? "text-blue-600" : "text-red-500"}>{activeZoneRateMoM > 0 ? '+' : ''}{activeZoneRateMoM.toFixed(1)}%p</span> / 전사({companyActiveZoneRate.toFixed(1)}%) <span className={activeZoneRateCompanyDiff >= 0 ? "text-blue-600" : "text-red-500"}>{activeZoneRateCompanyDiff > 0 ? '+' : ''}{activeZoneRateCompanyDiff.toFixed(1)}%p</span>
       </div>
     </div>
   );
