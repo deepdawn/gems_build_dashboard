@@ -7,8 +7,14 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$(dirname "$DIR")"
 
+# PATH에 Homebrew 경로 추가 (launchd 환경 오류 방지)
+export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH
+
 cd "$PROJECT_ROOT/frontend" || exit 1
 
-# 성능과 안정성을 위해 dev 서버 대신 preview 모드로 실행 권장
-echo "[$(date)] Starting Dashboard Web Server..."
-/usr/bin/env npm run preview -- --host
+echo "[$(date)] Building Dashboard Web..."
+npm run build
+
+echo "[$(date)] Starting Nginx Server..."
+# launchd에서 관리 가능하도록 데몬 모드 끄고 포그라운드 실행
+exec /opt/homebrew/opt/nginx/bin/nginx -g 'daemon off;'

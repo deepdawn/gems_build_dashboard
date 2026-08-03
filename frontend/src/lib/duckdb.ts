@@ -26,23 +26,62 @@ export async function initDuckDB() {
   
   conn = await db.connect();
   
-  // Register files
-  const files = [
+  // Register base files
+  const baseFiles = [
     'revenue_goal.parquet',
-    'daily_stats.parquet',
-    'unused_72h.parquet',
-    'task_stats.parquet'
+    'deploy_spot.parquet'
   ];
 
-  for (const file of files) {
+  for (const file of baseFiles) {
     const fileUrl = new URL(`/data/${file}`, window.location.origin).href;
     await db.registerFileURL(file, fileUrl, duckdb.DuckDBDataProtocol.HTTP, false);
-    // Create views for easier querying
     await conn.query(`CREATE OR REPLACE VIEW ${file.split('.')[0]} AS SELECT * FROM '${file}';`);
   }
   
   initialized = true;
   return { db, conn };
+}
+
+export async function registerPartitions(year: number, month: number) {
+  if (!db || !conn) return;
+
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+
+  const partitionedDatasets = [
+    'daily_stats',
+    'unused_72h',
+    'task_stats',
+    'deploy_zone_usages',
+    'deploy_used_time'
+  ];
+
+  for (const dataset of partitionedDatasets) {
+    const currFile = `${dataset}_${year}_${month.toString().padStart(2, '0')}.parquet`;
+    const prevFile = `${dataset}_${prevYear}_${prevMonth.toString().padStart(2, '0')}.parquet`;
+
+    const filesToLoad = [];
+    for (const file of [currFile, prevFile]) {
+      try {
+        const url = new URL(`/data/${file}`, window.location.origin).href;
+        const res = await fetch(url, { method: 'HEAD' });
+        if (res.ok) {
+           await db.registerFileURL(file, url, duckdb.DuckDBDataProtocol.HTTP, false);
+           filesToLoad.push(`SELECT * FROM '${file}'`);
+        }
+      } catch (e) {
+        console.warn('Failed to register partition:', file, e);
+      }
+    }
+    
+    if (filesToLoad.length > 0) {
+       await conn.query(`CREATE OR REPLACE VIEW ${dataset} AS ${filesToLoad.join(' UNION ALL ')};`);
+    } else {
+       // If no partitions found, create empty view to prevent query crashes
+       // We don't know the exact schema, so queries might still fail if they expect specific columns. 
+       // This will be caught by the UI try-catch.
+    }
+  }
 }
 
 export async function getDBConnection() {

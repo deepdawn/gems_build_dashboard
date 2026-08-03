@@ -1,0 +1,10 @@
+pandas
+polars
+geopandas
+shapely
+numpy
+sqlalchemy
+pymysql
+duckdb
+openpyxl
+pyarrow

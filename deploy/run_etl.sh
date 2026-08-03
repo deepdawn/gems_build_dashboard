@@ -10,6 +10,6 @@ PROJECT_ROOT="$(dirname "$DIR")"
 cd "$PROJECT_ROOT/utils" || exit 1
 
 echo "[$(date)] Starting ETL Process..."
-# 시스템에 설치된 python3를 사용하여 실행 (가상환경이 있다면 경로 수정 필요)
-/usr/bin/env python3 dashboard_etl.py
+# 가상환경(venv)에 설치된 python을 사용하여 실행
+"$PROJECT_ROOT/.venv/bin/python" dashboard_etl.py
 echo "[$(date)] ETL Process Completed."

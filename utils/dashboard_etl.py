@@ -6,10 +6,13 @@ import numpy as np
 
 def main():
     # Base paths
-    gdrive_base = "/Users/galaxy/Google Drive/공유 드라이브"
-    onedrive_base = "/Users/galaxy/OneDrive - 지바이크/서비스운영본부 - 현장데이터 개발센터"
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)
     
-    frontend_data_dir = "/Users/galaxy/gems_build_dashboard/frontend/public/data"
+    gdrive_base = "/Users/galaxy.jang/Google Drive/공유 드라이브"
+    onedrive_base = "/Users/galaxy.jang/OneDrive - 지바이크/서비스운영본부 - 현장데이터 개발센터"
+    
+    frontend_data_dir = os.path.join(project_root, "frontend", "public", "data")
     os.makedirs(frontend_data_dir, exist_ok=True)
     
     print("Starting ETL Process...")
@@ -37,7 +40,9 @@ def main():
         "daily_stats": os.path.join(gdrive_base, "gbike.rich_daily_statistics"),
         "deploy_spot": os.path.join(gdrive_base, "gbike.rich_deploy_spot_info"),
         "unused_72h": os.path.join(gdrive_base, "gbike_smartops.vehicle_statistics_data"),
-        "task_stats": os.path.join(gdrive_base, "gbike.rich_task_statistics")
+        "task_stats": os.path.join(gdrive_base, "gbike.rich_task_statistics"),
+        "deploy_zone_usages": os.path.join(gdrive_base, "gbike.rich_deploy_zone_usages"),
+        "deploy_used_time": os.path.join(gdrive_base, "gbike.rich_deploy_used_time")
     }
     
     for name, folder in sources.items():
@@ -54,15 +59,26 @@ def main():
             
         print(f"Processing {name} from {folder} to {out_path}...")
         try:
-            con.execute(f"""
-                COPY (
-                    SELECT * FROM read_parquet('{glob_pattern}', hive_partitioning=true, union_by_name=true)
-                ) TO '{out_path}' (FORMAT PARQUET)
-            """)
+            if name == "deploy_spot":
+                con.execute(f"""
+                    COPY (
+                        SELECT * FROM read_parquet('{glob_pattern}', hive_partitioning=true, union_by_name=true)
+                    ) TO '{out_path}' (FORMAT PARQUET)
+                """)
+            else:
+                con.execute(f"CREATE OR REPLACE TEMP VIEW temp_{name} AS SELECT * FROM read_parquet('{glob_pattern}', hive_partitioning=true, union_by_name=true)")
+                # Get distinct Year and Month
+                yms = con.execute(f"SELECT DISTINCT EXTRACT(YEAR FROM CAST(date AS DATE)) as y, EXTRACT(MONTH FROM CAST(date AS DATE)) as m FROM temp_{name} WHERE date IS NOT NULL").fetchall()
+                
+                for y, m in yms:
+                    if y is None or m is None:
+                        continue
+                    part_path = os.path.join(frontend_data_dir, f"{name}_{int(y)}_{int(m):02d}.parquet")
+                    con.execute(f"COPY (SELECT * FROM temp_{name} WHERE EXTRACT(YEAR FROM CAST(date AS DATE)) = {y} AND EXTRACT(MONTH FROM CAST(date AS DATE)) = {m}) TO '{part_path}' (FORMAT PARQUET)")
+                
             print(f"Successfully processed {name}.")
         except Exception as e:
             print(f"Error processing {name}: {e}")
-            pd.DataFrame().to_parquet(out_path)
 
     print("ETL Process Complete.")
 

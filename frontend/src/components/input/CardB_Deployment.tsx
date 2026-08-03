@@ -10,11 +10,27 @@ const data = [
   { name: '금주', value: 61.2, rate: 73.5 },
 ];
 
-export const CardB_Deployment: React.FC = () => {
+interface CardBProps {
+  deploymentCount?: number;
+  deploymentCountMoM?: number;
+  dispatchRate24h?: number;
+  dispatchRate24hMoM?: number;
+  dispatchRate24hCompanyDiff?: number;
+  comparisonLabel?: string;
+}
+
+export const CardB_Deployment: React.FC<CardBProps> = ({
+  deploymentCount = 0,
+  deploymentCountMoM = 0,
+  dispatchRate24h = 0,
+  dispatchRate24hMoM = 0,
+  dispatchRate24hCompanyDiff = 0,
+  comparisonLabel = '전월'
+}) => {
   return (
     <div className="bg-white border border-green-200 rounded-lg p-5 shadow-sm flex flex-col h-[190px]">
       <div className="flex items-center gap-2 mb-2">
-        <div className="bg-[#438B31] text-white w-6 h-6 rounded flex items-center justify-center font-bold text-sm shadow-sm">B</div>
+        <div className="bg-[#438B31] text-white w-6 h-6 rounded flex items-center justify-center font-bold text-sm shadow-sm">D</div>
         <span className="font-bold text-green-900 text-lg">배치존 배치수 / 24h 출루율</span>
       </div>
       
@@ -22,13 +38,15 @@ export const CardB_Deployment: React.FC = () => {
         <div className="flex gap-4">
           <div>
             <div className="text-[13px] text-slate-500 font-bold mb-1">배치존 배치수</div>
-            <div className="text-[36px] font-black leading-none mb-2 tracking-tight">61.2<span className="text-xl">회</span></div>
-            <div className="text-[13px] font-semibold text-slate-500">전월 <span className="text-blue-600">+2.1%p</span></div>
+            <div className="text-[36px] font-black leading-none mb-2 tracking-tight">{Math.round(deploymentCount).toLocaleString()}<span className="text-xl">회</span></div>
+            <div className="text-[13px] font-semibold text-slate-500">{comparisonLabel} <span className={deploymentCountMoM >= 0 ? "text-blue-600" : "text-red-500"}>{deploymentCountMoM > 0 ? '+' : ''}{deploymentCountMoM.toFixed(1)}%</span></div>
           </div>
           <div>
             <div className="text-[13px] text-slate-500 font-bold mb-1">24h 출루율</div>
-            <div className="text-[36px] font-black leading-none mb-2 tracking-tight">73.5<span className="text-xl">%</span></div>
-            <div className="text-[13px] font-semibold text-slate-500">전사 <span className="text-red-500">-1.4%p</span></div>
+            <div className="text-[36px] font-black leading-none mb-2 tracking-tight">{dispatchRate24h.toFixed(1)}<span className="text-xl">%</span></div>
+            <div className="text-[13px] font-semibold text-slate-500">
+              {comparisonLabel} <span className={dispatchRate24hMoM >= 0 ? "text-blue-600" : "text-red-500"}>{dispatchRate24hMoM > 0 ? '+' : ''}{dispatchRate24hMoM.toFixed(1)}%p</span> / 전사 <span className={dispatchRate24hCompanyDiff >= 0 ? "text-blue-600" : "text-red-500"}>{dispatchRate24hCompanyDiff > 0 ? '+' : ''}{dispatchRate24hCompanyDiff.toFixed(1)}%p</span>
+            </div>
           </div>
         </div>
         
