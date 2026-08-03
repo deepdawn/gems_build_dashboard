@@ -1,0 +1,17 @@
+# Python
+.venv
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+
+# Mac
+.DS_Store
+
+# Data (Avoid pushing large generated parquet files)
+frontend/public/data/*.parquet
+
+# Logs
+logs/

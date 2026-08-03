@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 const data = [
@@ -41,7 +41,7 @@ export const CardE_Points: React.FC = () => {
                 stroke="none"
                 isAnimationActive={false}
               >
-                {data.map((entry, index) => (
+                {data.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>

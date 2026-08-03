@@ -30,14 +30,13 @@ export async function initDuckDB() {
   const files = [
     'revenue_goal.parquet',
     'daily_stats.parquet',
-    'deploy_spot.parquet',
     'unused_72h.parquet',
     'task_stats.parquet'
   ];
 
   for (const file of files) {
-    // We register the URL directly. The path will be /data/...
-    await db.registerFileURL(file, `/data/${file}`, duckdb.DuckDBDataProtocol.HTTP, false);
+    const fileUrl = new URL(`/data/${file}`, window.location.origin).href;
+    await db.registerFileURL(file, fileUrl, duckdb.DuckDBDataProtocol.HTTP, false);
     // Create views for easier querying
     await conn.query(`CREATE OR REPLACE VIEW ${file.split('.')[0]} AS SELECT * FROM '${file}';`);
   }

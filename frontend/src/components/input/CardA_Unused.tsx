@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
 
 type Props = {
@@ -17,7 +17,7 @@ export const CardA_Unused: React.FC<Props> = ({ data = [], currentRate = 0 }) =>
         {data.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
-              <Tooltip formatter={(value: number) => [`${value.toFixed(1)}%`, '미사용률']} />
+              <Tooltip formatter={(value: any) => [`${Number(value).toFixed(1)}%`, '미사용률']} />
               <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>

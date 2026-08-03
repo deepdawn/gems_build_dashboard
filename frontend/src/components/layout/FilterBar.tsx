@@ -41,14 +41,26 @@ export const FilterBar: React.FC = () => {
 
   const dateOptions = dateType === '월 누적(MTD)' ? mtdOptions : weeklyOptions;
 
-  // Handle DateType change
   const handleDateTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newType = e.target.value;
     setDateType(newType);
+    
+    const now = new Date();
+    const year = String(now.getFullYear()).slice(-2);
+    
     if (newType === '월 누적(MTD)') {
-      setSelectedDate('26년 1월');
+      const month = now.getMonth() + 1; // 1-12
+      setSelectedDate(`${year}년 ${month}월`);
     } else {
-      setSelectedDate('26-W1');
+      // Calculate previous week
+      now.setDate(now.getDate() - 7);
+      const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const week = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+      const prevYear = String(d.getUTCFullYear()).slice(-2);
+      setSelectedDate(`${prevYear}-W${week}`);
     }
   };
 

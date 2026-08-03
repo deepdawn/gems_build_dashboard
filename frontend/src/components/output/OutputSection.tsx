@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Lightbulb } from 'lucide-react';
 import { KpiProgressCard } from './KpiProgressCard';
 import { useFilters } from '../../context/FilterContext';
@@ -25,77 +25,103 @@ export const OutputSection: React.FC = () => {
       try {
         let year = 2026;
         let month = 1;
-        
-        // 간단한 날짜 파싱 (예: "26년 1월")
-        if (dateType === '월 누적(MTD)') {
+        let week = 1;
+        let isWeekly = dateType === '주 단위';
+
+        if (!isWeekly) {
           const match = selectedDate.match(/(\d+)년\s+(\d+)월/);
           if (match) {
             year = 2000 + parseInt(match[1]);
             month = parseInt(match[2]);
           }
         } else {
-           // 주 단위일 경우 로직 추후 보강, 현재는 1월로 기본값
-           year = 2026; month = 1; 
+          const match = selectedDate.match(/(\d+)-W(\d+)/);
+          if (match) {
+            year = 2000 + parseInt(match[1]);
+            week = parseInt(match[2]);
+            // ISO week 기준 해당 주가 속한 월 계산
+            const d = new Date(Date.UTC(year, 0, 1 + (week - 1) * 7));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            month = d.getUTCMonth() + 1;
+          }
         }
 
         const prevMonth = month === 1 ? 12 : month - 1;
-        const prevYear = month === 1 ? year - 1 : year;
+        const prevYearForMonth = month === 1 ? year - 1 : year;
+        const prevWeek = week === 1 ? 52 : week - 1;
+        const prevYearForWeek = week === 1 ? year - 1 : year;
 
-        // 1. 목표 매출 가져오기
+        // 1. 목표 매출 및 대당매출 가져오기
         const goalQuery = `
-          SELECT SUM(경영목표) as target_revenue, SUM(경영목표할당대수) as target_allocated
+          SELECT SUM(경영목표) as target_revenue, 
+                 SUM(경영목표할당대수) as target_allocated,
+                 SUM(경영목표대당매출 * 경영목표할당대수) / NULLIF(SUM(경영목표할당대수), 0) as target_revenue_per_asset
           FROM revenue_goal
           WHERE 캠프 = '${camp}' AND 년 = ${year} AND 월 = ${month}
         `;
         const goalRes = await query(goalQuery);
         let targetRevenue = 0;
-        let targetAllocated = 0;
+        let targetRevenuePerAsset = 0;
         if (goalRes.length > 0) {
-          targetRevenue = goalRes[0].target_revenue || 0;
-          targetAllocated = goalRes[0].target_allocated || 0;
+          const rawTarget = goalRes[0].target_revenue || 0;
+          if (isWeekly) {
+            // 그 달의 주 수로 나눈 주 평균 목표 값을 주별 목표로 설정
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const weeksInMonth = daysInMonth / 7.0;
+            targetRevenue = rawTarget / weeksInMonth;
+          } else {
+            targetRevenue = rawTarget;
+          }
+          targetRevenuePerAsset = goalRes[0].target_revenue_per_asset || 0;
         }
-        const targetRevenuePerAsset = targetAllocated > 0 ? targetRevenue / targetAllocated : 0;
 
-        // 2. 현재 월 실적 가져오기
+        // 2. 현재 실적 가져오기
+        let dateCondition = `EXTRACT(YEAR FROM date) = ${year} AND EXTRACT(MONTH FROM date) = ${month}`;
+        if (isWeekly) {
+          dateCondition = `EXTRACT(YEAR FROM date) = ${year} AND EXTRACT(WEEK FROM date) = ${week}`;
+        }
+
         const statsQuery = `
-          SELECT SUM(revenue) as total_revenue, AVG(할당대수) as avg_allocated, SUM(운행수) as total_trips
+          SELECT SUM(revenue) as total_revenue, SUM(할당대수) as sum_allocated, SUM(운행수) as total_trips
           FROM daily_stats 
-          WHERE middle_region_name = '${camp}' 
-            AND EXTRACT(YEAR FROM date) = ${year} 
-            AND EXTRACT(MONTH FROM date) = ${month}
+          WHERE middle_region_name = '${camp}' AND ${dateCondition}
         `;
         const statsRes = await query(statsQuery);
         let totalRevenue = 0;
-        let avgAllocated = 0;
+        let sumAllocated = 0;
         let totalTrips = 0;
         if (statsRes.length > 0) {
-          totalRevenue = statsRes[0].total_revenue || 0;
-          avgAllocated = statsRes[0].avg_allocated || 0;
-          totalTrips = statsRes[0].total_trips || 0;
+          totalRevenue = Number(statsRes[0].total_revenue) || 0;
+          sumAllocated = Number(statsRes[0].sum_allocated) || 0;
+          totalTrips = Number(statsRes[0].total_trips) || 0;
         }
 
-        // 지바이크 공식: 매출액 = (매출) / (할당대수 * 1.1)
-        const revenuePerAsset = avgAllocated > 0 ? totalRevenue / (avgAllocated * 1.1) : 0;
-        // 공식: 대당회전수 = 총운행수 / 할당대수
-        const tripsPerAsset = avgAllocated > 0 ? totalTrips / avgAllocated : 0;
+        // 지바이크 공식: 대당매출 = sum(매출) / sum(할당대수)
+        const revenuePerAsset = sumAllocated > 0 ? totalRevenue / sumAllocated : 0;
+        // 지바이크 공식: 대당회전수 = 총운행수 / 총할당대수
+        const tripsPerAsset = sumAllocated > 0 ? totalTrips / sumAllocated : 0;
 
-        // 3. 전월 실적 가져오기 (MoM)
+        // 3. 비교 실적 가져오기 (전월 or 전주)
+        let prevDateCondition = `EXTRACT(YEAR FROM date) = ${prevYearForMonth} AND EXTRACT(MONTH FROM date) = ${prevMonth}`;
+        if (isWeekly) {
+          prevDateCondition = `EXTRACT(YEAR FROM date) = ${prevYearForWeek} AND EXTRACT(WEEK FROM date) = ${prevWeek}`;
+        }
+
         const prevStatsQuery = `
-          SELECT SUM(revenue) as total_revenue, AVG(할당대수) as avg_allocated
+          SELECT SUM(revenue) as total_revenue, SUM(할당대수) as sum_allocated
           FROM daily_stats 
-          WHERE middle_region_name = '${camp}' 
-            AND EXTRACT(YEAR FROM date) = ${prevYear} 
-            AND EXTRACT(MONTH FROM date) = ${prevMonth}
+          WHERE middle_region_name = '${camp}' AND ${prevDateCondition}
         `;
         const prevRes = await query(prevStatsQuery);
         let prevTotalRevenue = 0;
-        let prevAvgAllocated = 0;
+        let prevSumAllocated = 0;
         if (prevRes.length > 0) {
-          prevTotalRevenue = prevRes[0].total_revenue || 0;
-          prevAvgAllocated = prevRes[0].avg_allocated || 0;
+          prevTotalRevenue = Number(prevRes[0].total_revenue) || 0;
+          prevSumAllocated = Number(prevRes[0].sum_allocated) || 0;
         }
         
-        const prevRevenuePerAsset = prevAvgAllocated > 0 ? prevTotalRevenue / (prevAvgAllocated * 1.1) : 0;
+        const prevRevenuePerAsset = prevSumAllocated > 0 ? prevTotalRevenue / prevSumAllocated : 0;
         
         const revenueMoM = prevTotalRevenue > 0 ? ((totalRevenue - prevTotalRevenue) / prevTotalRevenue) * 100 : 0;
         const revenuePerAssetMoM = prevRevenuePerAsset > 0 ? ((revenuePerAsset - prevRevenuePerAsset) / prevRevenuePerAsset) * 100 : 0;
@@ -120,6 +146,7 @@ export const OutputSection: React.FC = () => {
 
   const totalProgress = data.targetRevenue > 0 ? (data.totalRevenue / data.targetRevenue) * 100 : 0;
   const rpaProgress = data.targetRevenuePerAsset > 0 ? (data.revenuePerAsset / data.targetRevenuePerAsset) * 100 : 0;
+  const comparisonLabel = dateType === '주 단위' ? '전주' : '전월';
 
   return (
     <div className="mb-6">
@@ -129,15 +156,17 @@ export const OutputSection: React.FC = () => {
         <KpiProgressCard
           title="총매출 / 목표%"
           value={`₩ ${(data.totalRevenue / 100000000).toFixed(1)}억`}
-          progress={totalProgress}
-          mom={data.revenueMoM}
+          goalPercent={totalProgress}
+          comparisonText={`${comparisonLabel} 대비 ${data.revenueMoM > 0 ? '+' : ''}${data.revenueMoM.toFixed(1)}%`}
+          targetValue={`₩ ${(data.targetRevenue / 100000000).toFixed(1)}억`}
         />
         <KpiProgressCard
           title="대당매출 / 목표%"
           value={`₩ ${Math.round(data.revenuePerAsset).toLocaleString()}`}
-          progress={rpaProgress}
-          mom={data.revenuePerAssetMoM}
+          goalPercent={rpaProgress}
+          comparisonText={`${comparisonLabel} 대비 ${data.revenuePerAssetMoM > 0 ? '+' : ''}${data.revenuePerAssetMoM.toFixed(1)}%`}
           extraInfo={`대당회전수 ${data.tripsPerAsset.toFixed(2)}`}
+          targetValue={`₩ ${Math.round(data.targetRevenuePerAsset).toLocaleString()}`}
         />
       </div>
 

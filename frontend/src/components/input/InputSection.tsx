@@ -24,31 +24,40 @@ export const InputSection: React.FC = () => {
       try {
         let year = 2026;
         let month = 1;
+        let week = 1;
+        let isWeekly = dateType === '주 단위';
         
-        if (dateType === '월 누적(MTD)') {
+        if (!isWeekly) {
           const match = selectedDate.match(/(\d+)년\s+(\d+)월/);
           if (match) {
             year = 2000 + parseInt(match[1]);
             month = parseInt(match[2]);
           }
         } else {
-           year = 2026; month = 1; 
+          const match = selectedDate.match(/(\d+)-W(\d+)/);
+          if (match) {
+            year = 2000 + parseInt(match[1]);
+            week = parseInt(match[2]);
+          }
+        }
+
+        let dateCondition = `EXTRACT(YEAR FROM date) = ${year} AND EXTRACT(MONTH FROM date) = ${month}`;
+        if (isWeekly) {
+          dateCondition = `EXTRACT(YEAR FROM date) = ${year} AND EXTRACT(WEEK FROM date) = ${week}`;
         }
 
         // 1. 72시간 미사용 데이터 (Card A)
         const unusedQuery = `
-          SELECT EXTRACT(DAY FROM date) as day, SUM(deactivate_72h_count) as unused, SUM(total_vehicle_count) as total
+          SELECT strftime(date, '%m-%d') as day, SUM(deactivate_72h_count) as unused, SUM(total_vehicle_count) as total
           FROM unused_72h 
-          WHERE middle_region_name = '${camp}' 
-            AND EXTRACT(YEAR FROM date) = ${year} 
-            AND EXTRACT(MONTH FROM date) = ${month}
+          WHERE middle_region_name = '${camp}' AND ${dateCondition}
           GROUP BY day
           ORDER BY day
         `;
         const unusedRes = await query(unusedQuery);
         if (unusedRes.length > 0) {
           const chartData = unusedRes.map((r: any) => ({
-            name: `${r.day}일`,
+            name: r.day,
             value: r.total > 0 ? (r.unused / r.total) * 100 : 0
           }));
           setUnusedData(chartData);
@@ -62,19 +71,16 @@ export const InputSection: React.FC = () => {
           setUnusedRate(0);
         }
 
-        // 2. 작업내역 데이터 (Card D, F) - 재배치, 배터리
-        // 컬럼명 주의: 재배치_건수, 배터리_건수
+        // 2. 작업내역 데이터 (Card D, F)
         const taskQuery = `
           SELECT SUM(재배치_건수) as realloc, SUM(배터리_건수) as battery
           FROM task_stats
-          WHERE 중분류 = '${camp}' 
-            AND EXTRACT(YEAR FROM date) = ${year} 
-            AND EXTRACT(MONTH FROM date) = ${month}
+          WHERE 중분류 = '${camp}' AND ${dateCondition}
         `;
         const taskRes = await query(taskQuery);
         if (taskRes.length > 0) {
-          setReallocationCount(taskRes[0].realloc || 0);
-          setBatteryCount(taskRes[0].battery || 0);
+          setReallocationCount(Number(taskRes[0].realloc) || 0);
+          setBatteryCount(Number(taskRes[0].battery) || 0);
         }
 
       } catch (err) {
