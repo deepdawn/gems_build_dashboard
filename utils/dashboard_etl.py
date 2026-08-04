@@ -1,8 +1,17 @@
 import pandas as pd
 import duckdb
 import os
+import sys
 import glob
 import numpy as np
+from datetime import datetime, timedelta
+
+# User's external script path for polars extraction
+sys.path.append('/Users/galaxy.jang/anti_codebase/scripts/python/utils')
+try:
+    from read_rich_orders_polars import load_rich_orders_polars
+except ImportError:
+    load_rich_orders_polars = None
 
 def main():
     # Base paths
@@ -79,6 +88,65 @@ def main():
             print(f"Successfully processed {name}.")
         except Exception as e:
             print(f"Error processing {name}: {e}")
+
+    # 3. Extract 1-day of order data using load_rich_orders_polars
+    print("Processing rich_orders (1 day)...")
+    if load_rich_orders_polars is not None:
+        try:
+            target_date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+            # Extract specific columns
+            cols = ['dt', 'low_region_id', 'start_lat', 'start_lng', 'end_lat', 'end_lng', 'vehicle_type']
+            
+            print(f"Loading rich_orders for {target_date}...")
+            df_orders = load_rich_orders_polars(
+                target_date, 
+                target_date, 
+                columns=cols,
+                base_path="/Users/galaxy.jang/Google Drive/공유 드라이브/gbike.rich_orders"
+            )
+            
+            if df_orders is not None and not df_orders.is_empty():
+                # Load region hierarchy to join
+                region_path = "/Users/galaxy.jang/Google Drive/공유 드라이브/gbike.rich_region/rich_region_hierarchy.parquet"
+                import polars as pl
+                if os.path.exists(region_path):
+                    df_region = pl.read_parquet(region_path)
+                    
+                    # Ensure same data type for join
+                    df_orders = df_orders.with_columns(pl.col('low_region_id').cast(pl.Int64))
+                    df_region = df_region.with_columns(pl.col('region_id').cast(pl.Int64))
+                    
+                    # Join with region hierarchy
+                    df_orders = df_orders.join(df_region, left_on='low_region_id', right_on='region_id', how='left')
+                    
+                    # Rename columns for DuckDB matching
+                    df_orders = df_orders.rename({
+                        '대지역': 'high_region_name',
+                        '중지역': 'middle_region_name',
+                        'vehicle_type': '기기구분'
+                    })
+                    
+                    # Clean device type
+                    df_orders = df_orders.with_columns(
+                        pl.when(pl.col('기기구분').str.contains('bicycle')).then(pl.lit('자전거'))
+                        .when(pl.col('기기구분').str.contains('scooter')).then(pl.lit('킥보드'))
+                        .otherwise(pl.col('기기구분')).alias('기기구분')
+                    )
+                    
+                    # Format dt as date directly from datetime
+                    df_orders = df_orders.with_columns(
+                        pl.col('dt').cast(pl.Date).alias('date')
+                    )
+                
+                out_path = os.path.join(frontend_data_dir, f"orders.parquet")
+                df_orders.write_parquet(out_path)
+                print(f"Successfully processed rich_orders: {out_path}")
+            else:
+                print(f"No orders found for {target_date}.")
+        except Exception as e:
+            print(f"Error processing rich_orders: {e}")
+    else:
+        print("Skipping rich_orders: read_rich_orders_polars module not found.")
 
     print("ETL Process Complete.")
 

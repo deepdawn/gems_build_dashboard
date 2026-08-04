@@ -29,7 +29,8 @@ export async function initDuckDB() {
   // Register base files
   const baseFiles = [
     'revenue_goal.parquet',
-    'deploy_spot.parquet'
+    'deploy_spot.parquet',
+    'orders.parquet'
   ];
 
   for (const file of baseFiles) {

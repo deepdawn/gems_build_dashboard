@@ -11,24 +11,32 @@
   },
   "dependencies": {
     "@duckdb/duckdb-wasm": "^1.33.1-dev57.0",
+    "@kepler.gl/actions": "^3.3.0-alpha.5",
+    "@kepler.gl/components": "^3.3.0-alpha.5",
+    "@kepler.gl/reducers": "^3.3.0-alpha.5",
     "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/vite": "^4.3.3",
     "apache-arrow": "^21.2.0",
+    "kepler.gl": "^3.0.0",
     "lucide-react": "^1.28.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "recharts": "^3.10.1"
+    "react-palm": "^3.3.11",
+    "react-redux": "^9.3.0",
+    "recharts": "^3.10.1",
+    "redux": "^5.0.1",
+    "styled-components": "^6.4.4"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.4",
+    "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.5.4",
     "oxlint": "^1.75.0",
     "postcss": "^8.5.25",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.2.0"
+    "vite": "^5.4.1"
   }
 }
