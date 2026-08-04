@@ -15,3 +15,6 @@ frontend/public/data/*.parquet
 
 # Logs
 logs/
+
+# Env
+.env

@@ -8,3 +8,4 @@ pymysql
 duckdb
 openpyxl
 pyarrow
+python-dotenv

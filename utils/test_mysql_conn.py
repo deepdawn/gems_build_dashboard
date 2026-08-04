@@ -4,14 +4,18 @@ from sqlalchemy import create_engine
 import urllib.parse
 import sys
 import os
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "../.env"))
 
 def get_engine():
-    host = 'live.st.rds.gbility.io'
-    user = 'gbikemarketing'
-    password = urllib.parse.quote_plus('gbikemkt0514$@#!')
-    port = 3306
+    host = os.environ.get('MYSQL_HOST')
+    user = os.environ.get('MYSQL_USER')
+    password_raw = os.environ.get('MYSQL_PASSWORD', '')
+    password = urllib.parse.quote_plus(password_raw)
+    port = os.environ.get('MYSQL_PORT', '3306')
     # gbike.rich_user 등 기본 db 타겟팅을 위해 설정
-    database = 'gbike'
+    database = os.environ.get('MYSQL_DATABASE', 'gbike')
 
     try:
         engine = create_engine(

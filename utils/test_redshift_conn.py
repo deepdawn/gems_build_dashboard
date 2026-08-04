@@ -3,13 +3,17 @@ from sqlalchemy import create_engine
 import urllib.parse
 import sys
 import os
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "../.env"))
 
 def get_redshift_engine():
-    host = 'live-redshift-cluster-gbike.comng6zxlpsm.ap-northeast-2.redshift.amazonaws.com'
-    user = 'rmteam'
-    password = urllib.parse.quote_plus('Gbike@rmteam@20230510!')
-    port = 5439
-    database = 'gbike'
+    host = os.environ.get('REDSHIFT_HOST')
+    user = os.environ.get('REDSHIFT_USER')
+    password_raw = os.environ.get('REDSHIFT_PASSWORD', '')
+    password = urllib.parse.quote_plus(password_raw)
+    port = os.environ.get('REDSHIFT_PORT', '5439')
+    database = os.environ.get('REDSHIFT_DATABASE', 'gbike')
 
     try:
         # sqlalchemy-redshift 및 psycopg2를 사용한 연결
