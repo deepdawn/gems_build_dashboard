@@ -51,7 +51,9 @@ export async function registerPartitions(year: number, month: number) {
     'unused_72h',
     'task_stats',
     'deploy_zone_usages',
-    'deploy_used_time'
+    'deploy_used_time',
+    'weather_data',
+    'battery_data'
   ];
 
   // 로드할 타겟 월 배열 (전월, 당월, 익월) - 주차(Week) 조회를 위해 넉넉히 로드

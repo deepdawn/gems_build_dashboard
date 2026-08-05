@@ -10,7 +10,7 @@ interface CardCProps {
   currentLabel?: string;
 }
 
-export const CardC_Allocation: React.FC<CardCProps> = ({ 
+export const CardA_Allocation: React.FC<CardCProps> = ({ 
   currentAllocation = 0, 
   prevAllocation = 0,
   currentOperated = 0,
@@ -39,7 +39,7 @@ export const CardC_Allocation: React.FC<CardCProps> = ({
   return (
     <div className="bg-white border border-green-200 rounded-lg p-5 shadow-sm flex flex-col h-[190px]">
       <div className="flex items-center gap-2 mb-2">
-        <div className="bg-[#438B31] text-white w-6 h-6 rounded flex items-center justify-center font-bold text-sm shadow-sm">F</div>
+        <div className="bg-green-600 text-white w-6 h-6 rounded flex items-center justify-center font-bold text-sm shadow-sm">A</div>
         <span className="font-bold text-green-900 text-lg">할당대수 & 가동률</span>
       </div>
       

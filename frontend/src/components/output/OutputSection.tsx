@@ -24,7 +24,7 @@ export const OutputSection: React.FC = () => {
     centerRpaAvg: 0,
     companyRpaAvg: 0
   });
-  const [dailyTrips, setDailyTrips] = useState<{ day: string; tripsPerAsset: number; revenuePerAsset: number }[]>([]);
+  const [dailyTrips, setDailyTrips] = useState<{ day: string; tripsPerAsset: number; revenuePerAsset: number; precipitation?: number }[]>([]);
   const [debugError, setDebugError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -211,12 +211,39 @@ export const OutputSection: React.FC = () => {
           ORDER BY day
         `;
         const dailyTripsRes = await query(dailyTripsQuery);
+        let weatherMap = new Map();
+        try {
+          const weatherQuery = `
+            SELECT date, SUM("일 총 강수량") as precipitation 
+            FROM weather_data 
+            WHERE middle_region_name = '${camp}' AND EXTRACT(YEAR FROM CAST(date AS DATE)) = ${year} AND EXTRACT(MONTH FROM CAST(date AS DATE)) = ${month}
+            GROUP BY date
+          `;
+          const weatherRes = await query(weatherQuery);
+          for (const w of weatherRes) {
+            const dateStr = new Date(w.date).toISOString().slice(5,10).replace('-', '-'); 
+            weatherMap.set(dateStr, Number(w.precipitation) || 0);
+          }
+        } catch(e) {
+          console.log("Weather data not available yet.");
+        }
+
         const dailyTripsChartData = dailyTripsRes.map((r: any) => {
           const alloc = Number(r.avg_allocated) || 0;
+          let p = weatherMap.get(r.day);
+          // if date formats don't match, try string manipulation
+          if (p === undefined) {
+             const m = r.day.match(/(\d+)-(\d+)/);
+             if (m) {
+                 const d2 = `${m[1]}-${m[2]}`;
+                 p = weatherMap.get(d2) || 0;
+             }
+          }
           return {
             day: r.day,
             tripsPerAsset: alloc > 0 ? Number(r.total_trips) / alloc : 0,
-            revenuePerAsset: alloc > 0 ? Number(r.total_revenue) / alloc : 0
+            revenuePerAsset: alloc > 0 ? Number(r.total_revenue) / alloc : 0,
+            precipitation: p || 0
           };
         });
 

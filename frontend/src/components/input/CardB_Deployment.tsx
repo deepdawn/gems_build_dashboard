@@ -1,85 +1,57 @@
 import React from 'react';
-import { BarChart, Bar, ResponsiveContainer, ReferenceLine } from 'recharts';
-
-const data = [
-  { name: '5주', value: 60, rate: 70 },
-  { name: '4주', value: 60, rate: 71 },
-  { name: '3주', value: 61, rate: 72 },
-  { name: '2주', value: 61, rate: 73 },
-  { name: '1주', value: 61, rate: 73 },
-  { name: '금주', value: 61.2, rate: 73.5 },
-];
+import { ComposedChart, Bar, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 interface CardBProps {
   deploymentCount?: number;
   deploymentCountMoM?: number;
-  dispatchRate24h?: number;
-  dispatchRate12h?: number;
-  dispatchRate6h?: number;
-  dispatchRate24hMoM?: number;
-  dispatchRate24hCompanyDiff?: number;
   comparisonLabel?: string;
+  data: {
+    name: string;
+    deploy: number;
+    dispatch: number;
+    rate: number;
+  }[];
 }
 
 export const CardB_Deployment: React.FC<CardBProps> = ({
   deploymentCount = 0,
   deploymentCountMoM = 0,
-  dispatchRate24h = 0,
-  dispatchRate12h = 0,
-  dispatchRate6h = 0,
-  dispatchRate24hMoM = 0,
-  dispatchRate24hCompanyDiff = 0,
-  comparisonLabel = '전월'
+  comparisonLabel = '전월',
+  data = []
 }) => {
   return (
     <div className="bg-white border border-green-200 rounded-lg p-5 shadow-sm flex flex-col h-[190px]">
       <div className="flex items-center gap-2 mb-2">
-        <div className="bg-[#438B31] text-white w-6 h-6 rounded flex items-center justify-center font-bold text-sm shadow-sm">E</div>
-        <span className="font-bold text-green-900 text-lg">배치존 배치수 | n시간 내 출루율</span>
+        <div className="bg-green-600 text-white w-6 h-6 rounded flex items-center justify-center font-bold text-sm shadow-sm">B</div>
+        <span className="font-bold text-green-900 text-lg">배치존 배치수</span>
       </div>
       
       <div className="flex justify-between items-end flex-grow">
-        <div className="flex gap-4">
-          <div>
-            <div className="text-[13px] text-slate-500 font-bold mb-1">배치존 배치수</div>
-            <div className="text-[36px] font-black leading-none mb-2 tracking-tight">{Math.round(deploymentCount).toLocaleString()}<span className="text-xl">회</span></div>
-            <div className="text-[13px] font-semibold text-slate-500">{comparisonLabel} <span className={deploymentCountMoM >= 0 ? "text-blue-600" : "text-red-500"}>{deploymentCountMoM > 0 ? '+' : ''}{deploymentCountMoM.toFixed(1)}%</span></div>
-          </div>
-          <div>
-            <div className="flex gap-4 mb-2">
-              <div>
-                <div className="text-[11px] text-slate-500 font-bold mb-1">6h 출루율</div>
-                <div className={`text-[24px] font-black leading-none tracking-tight ${dispatchRate6h <= 80 ? 'text-red-500' : 'text-slate-900'}`}>{dispatchRate6h.toFixed(1)}<span className="text-sm">%</span></div>
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-500 font-bold mb-1">12h 출루율</div>
-                <div className={`text-[24px] font-black leading-none tracking-tight ${dispatchRate12h <= 80 ? 'text-red-500' : 'text-slate-900'}`}>{dispatchRate12h.toFixed(1)}<span className="text-sm">%</span></div>
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-500 font-bold mb-1">24h 출루율</div>
-                <div className={`text-[24px] font-black leading-none tracking-tight ${dispatchRate24h <= 80 ? 'text-red-500' : 'text-slate-900'}`}>{dispatchRate24h.toFixed(1)}<span className="text-sm">%</span></div>
-              </div>
-            </div>
-            <div className="text-[11px] font-semibold text-slate-500 mt-1">
-              [24h] {comparisonLabel} <span className={dispatchRate24hMoM >= 0 ? "text-blue-600" : "text-red-500"}>{dispatchRate24hMoM > 0 ? '+' : ''}{dispatchRate24hMoM.toFixed(1)}%p</span> / 전사 <span className={dispatchRate24hCompanyDiff >= 0 ? "text-blue-600" : "text-red-500"}>{dispatchRate24hCompanyDiff > 0 ? '+' : ''}{dispatchRate24hCompanyDiff.toFixed(1)}%p</span>
-            </div>
-          </div>
+        <div className="w-[140px]">
+          <div className="text-[13px] text-slate-500 font-bold mb-1">기간 누적 배치수</div>
+          <div className="text-[36px] font-black leading-none mb-2 tracking-tight">{Math.round(deploymentCount).toLocaleString()}<span className="text-xl">회</span></div>
+          <div className="text-[13px] font-semibold text-slate-500">{comparisonLabel} 대비 <span className={deploymentCountMoM >= 0 ? "text-blue-600" : "text-red-500"}>{deploymentCountMoM > 0 ? '+' : ''}{deploymentCountMoM.toFixed(1)}%</span></div>
         </div>
         
-        <div className="w-[110px] h-[90px] relative flex flex-col justify-end">
-          <div className="absolute right-0 top-0 text-[9px] text-slate-500 font-medium">*할당대수 기준</div>
-          <div className="flex justify-end text-[10px] gap-2 mb-1 mt-4">
-             <span className="flex items-center gap-1 font-bold text-slate-600"><span className="w-2.5 h-2.5 rounded-full bg-[#86B971]"></span>배치수</span>
-             <span className="flex items-center gap-1 font-bold text-slate-600"><span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>출루율</span>
-          </div>
-          <div className="h-[55px] mt-1 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} barSize={10}>
-                <ReferenceLine y={50} stroke="#2563eb" strokeDasharray="3 3" />
-                <Bar dataKey="value" fill="#86B971" radius={[2,2,0,0]} isAnimationActive={false} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="flex-1 h-[130px] ml-2 -mt-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="left" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} tickFormatter={(value) => Math.round(value).toLocaleString()} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={(value) => `${Number(value).toFixed(1)}%`} />
+              <Tooltip 
+                contentStyle={{ fontSize: '11px', borderRadius: '4px' }}
+                formatter={(value: any, name: any) => {
+                  if (name === '출루율') return [`${Number(value).toFixed(1)}%`, name];
+                  return [Math.round(value).toLocaleString(), name];
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: '10px' }} iconSize={8} />
+              <Bar yAxisId="left" dataKey="deploy" name="배치수" fill="#86B971" radius={[2,2,0,0]} isAnimationActive={false} barSize={8} />
+              <Line yAxisId="left" dataKey="dispatch" name="출루수" type="monotone" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={false} />
+              <Line yAxisId="right" dataKey="rate" name="출루율" type="monotone" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

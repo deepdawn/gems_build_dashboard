@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 const COLORS = ['#438B31', '#e2e8f0'];
 
-interface CardEProps {
+interface CardIProps {
   managementZoneCount?: number;
   activeZoneRate?: number;
   activeZoneRateMoM?: number;
@@ -13,7 +13,7 @@ interface CardEProps {
   comparisonLabel?: string;
 }
 
-export const CardE_Points: React.FC<CardEProps> = ({
+export const CardI_Points: React.FC<CardIProps> = ({
   managementZoneCount = 0,
   activeZoneRate = 0,
   activeZoneRateMoM = 0,
@@ -30,7 +30,7 @@ export const CardE_Points: React.FC<CardEProps> = ({
   return (
     <div className="bg-white border border-green-200 rounded-lg p-5 shadow-sm flex flex-col h-[190px]">
       <div className="flex items-center gap-2 mb-2">
-        <div className="bg-[#438B31] text-white w-6 h-6 rounded flex items-center justify-center font-bold text-sm shadow-sm">G</div>
+        <div className="bg-green-600 text-white w-6 h-6 rounded flex items-center justify-center font-bold text-sm shadow-sm">I</div>
         <span className="font-bold text-green-900 text-lg">배치포인트 관리</span>
       </div>
       

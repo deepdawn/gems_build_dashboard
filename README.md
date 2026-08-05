@@ -63,3 +63,73 @@ npm run dev
 npm run build
 npm run preview
 ```
+
+## 🌐 외부 배포 가이드 (Cloudflare Tunnel)
+
+도메인 구매 여부에 따라 두 가지 방식으로 외부 접속 링크를 생성할 수 있습니다.
+
+### 방법 A. 도메인 없이 즉시 임시 링크 발급 (Quick Tunnel)
+아직 도메인을 구매하지 않았거나, 회의 시 잠깐만 공유할 때 사용하는 가장 쉬운 방법입니다. **단, 터미널을 끄거나 재시작하면 링크 주소가 변경됩니다.**
+
+1. `cloudflared` CLI 설치 (`npm install -g cloudflared`)
+2. 로컬 서버 실행 (`npx serve -s dist -p 3000` 등)
+3. 새 터미널을 열고 아래 명령어 실행
+   ```bash
+   cloudflared tunnel --url http://localhost:3000
+   ```
+4. 터미널 출력 로그 중 `https://xxxx.trycloudflare.com` 형태의 링크를 복사하여 공유합니다. (이 터미널 창을 켜두는 동안에만 해당 링크가 유지됩니다.)
+
+---
+
+### 방법 B. 나만의 고정 링크 설정 (Cloudflare Zero Trust)
+
+내부 관계자들에게 안전하게 공유할 수 있는 외부 고정 링크는 Cloudflare Zero Trust (Tunnel)를 이용해 설정할 수 있습니다. 
+
+### 사전 준비
+- Cloudflare 계정 및 등록된 도메인
+- `cloudflared` CLI 설치 (`npm install -g cloudflared`)
+
+### 설정 순서
+1. **Cloudflare 로그인 인증**
+   ```bash
+   cloudflared tunnel login
+   ```
+   (브라우저가 열리면 사용할 도메인이 속한 계정을 선택합니다.)
+
+2. **터널 생성**
+   ```bash
+   cloudflared tunnel create gems-dashboard
+   ```
+   (생성 완료 시 UUID 형태의 터널 ID가 발급됩니다.)
+
+3. **도메인 DNS 라우팅 등록**
+   ```bash
+   cloudflared tunnel route dns gems-dashboard dashboard.yourdomain.com
+   ```
+   (Cloudflare DNS에 자동으로 CNAME 레코드가 등록됩니다.)
+
+4. **설정 파일(config.yml) 작성**
+   `~/.cloudflared/config.yml` 파일을 생성하고 아래 내용을 작성합니다:
+   ```yaml
+   tunnel: <발급받은 터널 UUID>
+   credentials-file: /Users/현재PC계정명/.cloudflared/<발급받은 터널 UUID>.json
+
+   ingress:
+     - hostname: dashboard.yourdomain.com
+       service: http://localhost:3000
+     - service: http_status:404
+   ```
+
+5. **로컬 프로덕션 서버 실행 (터미널 1)**
+   ```bash
+   cd frontend
+   npm run build
+   npx serve -s dist -p 3000
+   ```
+
+6. **터널 실행 (터미널 2)**
+   ```bash
+   cloudflared tunnel run gems-dashboard
+   ```
+
+이제 브라우저에서 설정한 도메인(`https://dashboard.yourdomain.com`)으로 접속하면 외부에서도 안전하게 로컬 대시보드 환경에 접근할 수 있습니다. 로컬 PC가 켜져 있고 위 두 프로세스(serve, cloudflared)가 돌아가는 동안에는 고정 링크로 유지됩니다.

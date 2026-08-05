@@ -7,7 +7,7 @@ import numpy as np
 from datetime import datetime, timedelta
 
 # User's external script path for polars extraction
-sys.path.append('/Users/galaxy.jang/anti_codebase/scripts/python/utils')
+sys.path.append(f'{os.path.expanduser("~")}/anti_codebase/scripts/python/utils')
 try:
     from read_rich_orders_polars import load_rich_orders_polars
 except ImportError:
@@ -18,8 +18,8 @@ def main():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(current_dir)
     
-    gdrive_base = "/Users/galaxy.jang/Google Drive/공유 드라이브"
-    onedrive_base = "/Users/galaxy.jang/OneDrive - 지바이크/서비스운영본부 - 현장데이터 개발센터"
+    gdrive_base = f"{os.path.expanduser('~')}/Google Drive/공유 드라이브"
+    onedrive_base = f"{os.path.expanduser('~')}/OneDrive - 지바이크/서비스운영본부 - 현장데이터 개발센터"
     
     frontend_data_dir = os.path.join(project_root, "frontend", "public", "data")
     os.makedirs(frontend_data_dir, exist_ok=True)
@@ -42,16 +42,18 @@ def main():
     except Exception as e:
         print(f"Error processing Revenue Goal: {e}")
     
-    # 2. DuckDB Connection for Parquet aggregation
     con = duckdb.connect()
     
+    home_dir = os.path.expanduser('~')
     sources = {
         "daily_stats": os.path.join(gdrive_base, "gbike.rich_daily_statistics"),
         "deploy_spot": os.path.join(gdrive_base, "gbike.rich_deploy_spot_info"),
         "unused_72h": os.path.join(gdrive_base, "gbike_smartops.vehicle_statistics_data"),
         "task_stats": os.path.join(gdrive_base, "gbike.rich_task_statistics"),
         "deploy_zone_usages": os.path.join(gdrive_base, "gbike.rich_deploy_zone_usages"),
-        "deploy_used_time": os.path.join(gdrive_base, "gbike.rich_deploy_used_time")
+        "deploy_used_time": os.path.join(gdrive_base, "gbike.rich_deploy_used_time"),
+        "weather_data": os.path.join(home_dir, "Google Drive/공유 드라이브/gbike_smartops.weather_data"),
+        "battery_data": os.path.join(home_dir, "Google Drive/공유 드라이브/gbike.rich_battery_data")
     }
     
     for name, folder in sources.items():
@@ -76,14 +78,15 @@ def main():
                 """)
             else:
                 con.execute(f"CREATE OR REPLACE TEMP VIEW temp_{name} AS SELECT * FROM read_parquet('{glob_pattern}', hive_partitioning=true, union_by_name=true)")
+                date_col = "dt" if name == "battery_data" else "date"
                 # Get distinct Year and Month
-                yms = con.execute(f"SELECT DISTINCT EXTRACT(YEAR FROM CAST(date AS DATE)) as y, EXTRACT(MONTH FROM CAST(date AS DATE)) as m FROM temp_{name} WHERE date IS NOT NULL").fetchall()
+                yms = con.execute(f"SELECT DISTINCT EXTRACT(YEAR FROM CAST({date_col} AS DATE)) as y, EXTRACT(MONTH FROM CAST({date_col} AS DATE)) as m FROM temp_{name} WHERE {date_col} IS NOT NULL").fetchall()
                 
                 for y, m in yms:
                     if y is None or m is None:
                         continue
                     part_path = os.path.join(frontend_data_dir, f"{name}_{int(y)}_{int(m):02d}.parquet")
-                    con.execute(f"COPY (SELECT * FROM temp_{name} WHERE EXTRACT(YEAR FROM CAST(date AS DATE)) = {y} AND EXTRACT(MONTH FROM CAST(date AS DATE)) = {m}) TO '{part_path}' (FORMAT PARQUET)")
+                    con.execute(f"COPY (SELECT * FROM temp_{name} WHERE EXTRACT(YEAR FROM CAST({date_col} AS DATE)) = {y} AND EXTRACT(MONTH FROM CAST({date_col} AS DATE)) = {m}) TO '{part_path}' (FORMAT PARQUET)")
                 
             print(f"Successfully processed {name}.")
         except Exception as e:
@@ -103,12 +106,12 @@ def main():
                 start_date, 
                 target_date, 
                 columns=cols,
-                base_path="/Users/galaxy.jang/Google Drive/공유 드라이브/gbike.rich_orders"
+                base_path=f"{os.path.expanduser('~')}/Google Drive/공유 드라이브/gbike.rich_orders"
             )
             
             if df_orders is not None and not df_orders.is_empty():
                 # Load region hierarchy to join
-                region_path = "/Users/galaxy.jang/Google Drive/공유 드라이브/gbike.rich_region/rich_region_hierarchy.parquet"
+                region_path = f"{os.path.expanduser('~')}/Google Drive/공유 드라이브/gbike.rich_region/rich_region_hierarchy.parquet"
                 import polars as pl
                 if os.path.exists(region_path):
                     df_region = pl.read_parquet(region_path)

@@ -1,14 +1,14 @@
 import React from 'react';
 import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, LabelList } from 'recharts';
 
-type Props = {
+interface CardEProps {
   data?: { name: string; value: number }[];
   currentValue?: number;
   centerAvg?: number;
   companyAvg?: number;
 };
 
-export const CardB_ReallocPerAsset: React.FC<Props> = ({ data = [], currentValue = 0, centerAvg = 0, companyAvg = 0 }) => {
+export const CardE_BatteryPerAsset: React.FC<CardEProps> = ({ data = [], currentValue = 0, centerAvg = 0, companyAvg = 0 }) => {
   const centerDiff = currentValue - centerAvg;
   const companyDiff = currentValue - companyAvg;
 
@@ -16,8 +16,8 @@ export const CardB_ReallocPerAsset: React.FC<Props> = ({ data = [], currentValue
     <div className="bg-white border border-green-200 rounded-lg p-5 shadow-sm text-left flex flex-col h-[190px]">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <div className="bg-[#438B31] text-white w-6 h-6 rounded flex items-center justify-center font-bold text-sm shadow-sm">B</div>
-          <span className="font-bold text-green-900 text-lg">대당 재배치</span>
+          <div className="bg-green-600 text-white w-6 h-6 rounded flex items-center justify-center font-bold text-sm shadow-sm">E</div>
+          <span className="font-bold text-green-900 text-lg">대당 배터리 교체</span>
         </div>
         <div className="text-right">
           <div className="text-2xl font-black text-slate-800">{currentValue.toFixed(2)}건</div>
@@ -30,11 +30,11 @@ export const CardB_ReallocPerAsset: React.FC<Props> = ({ data = [], currentValue
       <div className="flex-grow mt-2 relative">
         {data.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 15, right: 10, left: -20, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 15, right: 30, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
               <XAxis dataKey="name" tick={{fontSize: 10, fill: '#64748b'}} axisLine={false} tickLine={false} />
               <YAxis tick={{fontSize: 10, fill: '#64748b'}} axisLine={false} tickLine={false} />
-              <Tooltip formatter={(value: any) => [`${Number(value).toFixed(2)}건`, '대당 재배치']} />
+              <Tooltip formatter={(value: any) => [`${Number(value).toFixed(2)}건`, '대당 배터리 교체']} />
               <Line type="monotone" dataKey="value" stroke="#438B31" strokeWidth={2} dot={{ r: 3, fill: '#438B31' }} activeDot={{ r: 5 }}>
                 <LabelList dataKey="value" position="top" formatter={(val: any) => `${Number(val).toFixed(2)}`} fontSize={10} fill="#438B31" fontWeight="bold" offset={8} />
               </Line>

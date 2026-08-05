@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useFilters } from '../../context/FilterContext';
 import { useDuckDB } from '../../hooks/useDuckDB';
-import { CardA_TaskPerAsset } from './CardA_TaskPerAsset';
-import { CardB_ReallocPerAsset } from './CardB_ReallocPerAsset';
-import { CardC_BatteryPerAsset } from './CardC_BatteryPerAsset';
-import { CardA_Unused } from './CardA_Unused';
+import { CardC_TaskPerAsset } from './CardC_TaskPerAsset';
+import { CardD_ReallocPerAsset } from './CardD_ReallocPerAsset';
+import { CardE_BatteryPerAsset } from './CardE_BatteryPerAsset';
+import { CardF_Unused } from './CardF_Unused';
+import { CardH_DispatchRate } from './CardH_DispatchRate';
+import { CardA_Allocation } from './CardA_Allocation';
 import { CardB_Deployment } from './CardB_Deployment';
-import { CardC_Allocation } from './CardC_Allocation';
-import { CardE_Points } from './CardE_Points';
+import { CardG_Battery } from './CardG_Battery';
+import { CardI_Points } from './CardI_Points';
 
 export const InputSection: React.FC = () => {
   const { center, camp, dateType, selectedDate, device, queryTrigger, partitionsError } = useFilters();
@@ -36,13 +38,20 @@ export const InputSection: React.FC = () => {
   const [unusedRate, setUnusedRate] = useState(0);
   const [unusedRate48, setUnusedRate48] = useState(0);
 
+  const [batteryLowData, setBatteryLowData] = useState<{name: string; value: number}[]>([]);
+  const [batteryLowRate, setBatteryLowRate] = useState(0);
+
   const [deploymentCount, setDeploymentCount] = useState(0);
   const [deploymentCountMoM, setDeploymentCountMoM] = useState(0);
+  const [deployChartData, setDeployChartData] = useState<{name: string, deploy: number, dispatch: number, rate: number}[]>([]);
+  
   const [dispatchRate24h, setDispatchRate24h] = useState(0);
   const [dispatchRate12h, setDispatchRate12h] = useState(0);
   const [dispatchRate6h, setDispatchRate6h] = useState(0);
   const [dispatchRate24hMoM, setDispatchRate24hMoM] = useState(0);
   const [dispatchRate24hCompanyDiff, setDispatchRate24hCompanyDiff] = useState(0);
+  const [prevDispatchRate24h, setPrevDispatchRate24h] = useState(0);
+  const [companyDispatchRate24h, setCompanyDispatchRate24h] = useState(0);
 
   const [currentAllocation, setCurrentAllocation] = useState(0);
   const [prevAllocation, setPrevAllocation] = useState(0);
@@ -247,6 +256,45 @@ export const InputSection: React.FC = () => {
           value48: r.total > 0 ? (r.unused_48 / r.total) * 100 : 0
         })));
 
+        // 2-1. Battery < 20%
+        try {
+          const batteryCurrentQuery = `
+            SELECT SUM(battery_0_20) as b_0_20, SUM(total_vehicle_count) as total
+            FROM battery_data 
+            WHERE 중지역 = '${camp}' AND dt = (
+              SELECT MAX(dt) FROM battery_data WHERE 중지역 = '${camp}' AND EXTRACT(YEAR FROM CAST(dt AS DATE)) = ${year} AND EXTRACT(MONTH FROM CAST(dt AS DATE)) = ${month}
+            ) ${getDeviceCond('기기타입')}
+          `;
+          const batCurrentRes = await query(batteryCurrentQuery);
+          if (batCurrentRes.length > 0) {
+            const b20 = Number(batCurrentRes[0].b_0_20) || 0;
+            const bTotal = Number(batCurrentRes[0].total) || 0;
+            setBatteryLowRate(bTotal > 0 ? (b20 / bTotal) * 100 : 0);
+          } else {
+            setBatteryLowRate(0);
+          }
+
+          const batteryChartQuery = `
+            SELECT 'W' || EXTRACT(WEEK FROM CAST(dt AS DATE)) as day, 
+                   date_trunc('week', CAST(dt AS DATE)) as week_start,
+                   SUM(battery_0_20) as b_0_20, SUM(total_vehicle_count) as total
+            FROM battery_data 
+            WHERE 중지역 = '${camp}' AND 
+                  CAST(dt AS DATE) >= (date_trunc('week', CAST('${chartMaxDate}' AS DATE)) - INTERVAL 21 DAY)
+                  AND CAST(dt AS DATE) < (date_trunc('week', CAST('${chartMaxDate}' AS DATE)) + INTERVAL 7 DAY)
+                  ${getDeviceCond('기기타입')}
+            GROUP BY day, week_start
+            ORDER BY week_start
+          `;
+          const batChartRes = await query(batteryChartQuery);
+          setBatteryLowData(batChartRes.map((r: any) => ({
+            name: r.day,
+            value: r.total > 0 ? (r.b_0_20 / r.total) * 100 : 0
+          })));
+        } catch (e) {
+          console.log("Battery data query error (maybe not ready):", e);
+        }
+
         // 3. Allocation (Card C)
         const allocQuery = `SELECT SUM(할당대수)/NULLIF(COUNT(DISTINCT date),0) as avg_alloc, SUM(운행대수) as sum_operated, SUM(할당대수) as sum_alloc FROM daily_stats WHERE middle_region_name = '${camp}' AND ${dateCondition} ${devDaily}`;
         const prevAllocQuery = `SELECT SUM(할당대수)/NULLIF(COUNT(DISTINCT date),0) as avg_alloc, SUM(운행대수) as sum_operated, SUM(할당대수) as sum_alloc FROM daily_stats WHERE middle_region_name = '${camp}' AND ${prevDateCondition} ${devDaily}`;
@@ -286,6 +334,25 @@ export const InputSection: React.FC = () => {
         const pDeploy = pdCountRes.length > 0 ? Number(pdCountRes[0].total_deploy) || 0 : 0;
         setDeploymentCountMoM(pDeploy > 0 ? ((cDeploy - pDeploy) / pDeploy) * 100 : 0);
 
+        const deployChartQuery = `
+          SELECT 
+            'W' || EXTRACT(WEEK FROM CAST(dt AS DATE)) as day,
+            date_trunc('week', CAST(dt AS DATE)) as week_start,
+            SUM(배치수) as deploy,
+            SUM(출루수) as dispatch
+          FROM deploy_zone_usages
+          WHERE 중지역 = '${camp}' AND ${chart4WeekCondition} ${devZone}
+          GROUP BY day, week_start
+          ORDER BY week_start
+        `;
+        const deployChartRes = await query(deployChartQuery);
+        setDeployChartData(deployChartRes.map((r: any) => ({
+          name: r.day,
+          deploy: Number(r.deploy) || 0,
+          dispatch: Number(r.dispatch) || 0,
+          rate: (Number(r.deploy) || 0) > 0 ? (Number(r.dispatch) / Number(r.deploy)) * 100 : 0
+        })));
+
         const dispatchQuery = `
           SELECT 
             SUM(CASE WHEN "출루까지 시간" <= 24 THEN 배치수 ELSE 0 END) as d24, 
@@ -302,6 +369,7 @@ export const InputSection: React.FC = () => {
         const pDispatchQuery = `SELECT SUM(CASE WHEN "출루까지 시간" <= 24 THEN 배치수 ELSE 0 END) as d24, SUM(배치수) as tot FROM deploy_used_time WHERE 중지역 = '${camp}' AND ${prevDateCondition} ${devZone}`;
         const pDispRes = await query(pDispatchQuery);
         const pDisp = pDispRes.length > 0 ? (Number(pDispRes[0].tot) > 0 ? (Number(pDispRes[0].d24)/Number(pDispRes[0].tot))*100 : 0) : 0;
+        setPrevDispatchRate24h(pDisp);
         setDispatchRate24hMoM(cDisp - pDisp);
 
         const cSpotQuery = `SELECT COUNT(DISTINCT deploy_zone_id) as total_zones FROM deploy_spot`;
@@ -317,6 +385,7 @@ export const InputSection: React.FC = () => {
         const cDispQuery = `SELECT SUM(CASE WHEN "출루까지 시간" <= 24 THEN 배치수 ELSE 0 END) as d24, SUM(배치수) as tot FROM deploy_used_time WHERE ${dateCondition} ${devZone}`;
         const cDispRes = await query(cDispQuery);
         const cDispR = cDispRes.length > 0 ? (Number(cDispRes[0].tot) > 0 ? (Number(cDispRes[0].d24)/Number(cDispRes[0].tot))*100 : 0) : 0;
+        setCompanyDispatchRate24h(cDispR);
         setDispatchRate24hCompanyDiff(cDisp - cDispR);
 
       } catch (err: any) {
@@ -349,32 +418,49 @@ export const InputSection: React.FC = () => {
       )}
       
       <div className="grid grid-cols-3 gap-4 mb-4">
-        <CardA_TaskPerAsset data={taskChart} currentValue={taskValue} centerAvg={taskCenter} companyAvg={taskCompany} />
-        <CardB_ReallocPerAsset data={reallocChart} currentValue={reallocValue} centerAvg={reallocCenter} companyAvg={reallocCompany} />
-        <CardC_BatteryPerAsset data={batteryChart} currentValue={batteryValue} centerAvg={batteryCenter} companyAvg={batteryCompany} />
+        <div className="col-span-1">
+          <CardA_Allocation 
+            currentAllocation={currentAllocation} 
+            prevAllocation={prevAllocation} 
+            currentOperated={currentOperated}
+            prevOperated={prevOperated}
+            comparisonLabel={dateType === '주 단위' ? '전주' : '전월'} 
+            currentLabel={dateType === '주 단위' ? '현재 주' : '현재 월'}
+          />
+        </div>
+        <div className="col-span-2">
+          <CardB_Deployment
+            deploymentCount={deploymentCount}
+            deploymentCountMoM={deploymentCountMoM}
+            comparisonLabel={dateType === '주 단위' ? '전주' : '전월'}
+            data={deployChartData}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4 mb-4">
+        <CardC_TaskPerAsset data={taskChart} currentValue={taskValue} centerAvg={taskCenter} companyAvg={taskCompany} />
+        <CardD_ReallocPerAsset data={reallocChart} currentValue={reallocValue} centerAvg={reallocCenter} companyAvg={reallocCompany} />
+        <CardE_BatteryPerAsset data={batteryChart} currentValue={batteryValue} centerAvg={batteryCenter} companyAvg={batteryCompany} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-4">
-        <CardA_Unused data={unusedData} currentRate={unusedRate} currentRate48={unusedRate48} />
-        <CardB_Deployment 
-          deploymentCount={deploymentCount}
-          deploymentCountMoM={deploymentCountMoM}
+        <CardF_Unused data={unusedData} currentRate={unusedRate} currentRate48={unusedRate48} />
+        <CardG_Battery data={batteryLowData} currentRate={batteryLowRate} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <CardH_DispatchRate 
           dispatchRate24h={dispatchRate24h}
           dispatchRate12h={dispatchRate12h}
           dispatchRate6h={dispatchRate6h}
           dispatchRate24hMoM={dispatchRate24hMoM}
           dispatchRate24hCompanyDiff={dispatchRate24hCompanyDiff}
+          prevDispatchRate24h={prevDispatchRate24h}
+          companyDispatchRate24h={companyDispatchRate24h}
           comparisonLabel={dateType === '주 단위' ? '전주' : '전월'}
         />
-        <CardC_Allocation 
-          currentAllocation={currentAllocation} 
-          prevAllocation={prevAllocation} 
-          currentOperated={currentOperated}
-          prevOperated={prevOperated}
-          comparisonLabel={dateType === '주 단위' ? '전주' : '전월'} 
-          currentLabel={dateType === '주 단위' ? '현재 주' : '현재 월'}
-        />
-        <CardE_Points 
+        <CardI_Points 
           managementZoneCount={managementZoneCount}
           activeZoneRate={activeZoneRate}
           activeZoneRateMoM={activeZoneRateMoM}

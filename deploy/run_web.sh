@@ -7,14 +7,23 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$(dirname "$DIR")"
 
-# PATH에 Homebrew 경로 추가 (launchd 환경 오류 방지)
+# PATH에 Homebrew 경로 및 npm 글로벌 경로 추가
 export PATH=/opt/homebrew/bin:/usr/local/bin:$PATH
+export PATH=$(npm config get prefix)/bin:$PATH
 
 cd "$PROJECT_ROOT/frontend" || exit 1
 
 echo "[$(date)] Building Dashboard Web..."
 npm run build
 
-echo "[$(date)] Starting Nginx Server..."
-# launchd에서 관리 가능하도록 데몬 모드 끄고 포그라운드 실행
-exec /opt/homebrew/opt/nginx/bin/nginx -g 'daemon off;'
+echo "[$(date)] Starting Web Server on port 3000..."
+# 백그라운드에 로컬 웹 서버 실행
+npx serve -s dist -p 3000 &
+SERVE_PID=$!
+
+echo "[$(date)] Starting Cloudflare Quick Tunnel..."
+# Quick Tunnel 실행 (터미널에 임시 URL이 출력됨)
+cloudflared tunnel --url http://localhost:3000
+
+# cloudflared가 종료되면 웹 서버 프로세스도 함께 종료
+kill $SERVE_PID

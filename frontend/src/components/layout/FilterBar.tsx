@@ -118,6 +118,27 @@ export const FilterBar: React.FC<FilterBarProps> = ({ activeTab }) => {
     }
   };
 
+  const getWeekRangeText = (weekStr: string) => {
+    if (!weekStr.includes('-W')) return '';
+    const [yy, w] = weekStr.split('-W');
+    const year = 2000 + parseInt(yy, 10);
+    const week = parseInt(w, 10);
+
+    const jan4 = new Date(Date.UTC(year, 0, 4));
+    const dayNum = jan4.getUTCDay() || 7;
+    const week1Monday = new Date(jan4.getTime() - (dayNum - 1) * 86400000);
+    const targetMonday = new Date(week1Monday.getTime() + (week - 1) * 7 * 86400000);
+    const targetSunday = new Date(targetMonday.getTime() + 6 * 86400000);
+
+    const format = (d: Date) => {
+      const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(d.getUTCDate()).padStart(2, '0');
+      return `${mm}-${dd}`;
+    };
+
+    return `${format(targetMonday)}~${format(targetSunday)}`;
+  };
+
   return (
     <div className="bg-slate-50 border border-slate-200 p-4 mb-4 rounded-lg flex flex-wrap gap-8 justify-center items-center text-slate-700 text-[15px]">
       
@@ -166,15 +187,22 @@ export const FilterBar: React.FC<FilterBarProps> = ({ activeTab }) => {
       <div className="flex items-center gap-2">
         <CalendarDays size={18} className="text-blue-700" />
         <span className="font-bold">날짜 선택:</span>
-        <select 
-          className="bg-transparent font-medium focus:outline-none cursor-pointer border-b border-slate-300 pb-0.5"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-        >
-          {dateOptions.map(opt => (
-             <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
+        <div className="relative flex flex-col justify-center">
+          <select 
+            className="bg-transparent font-medium focus:outline-none cursor-pointer border-b border-slate-300 pb-0.5"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+          >
+            {dateOptions.map(opt => (
+               <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+          {dateType === '주 단위' && (
+            <span className="absolute top-full left-0 mt-0.5 text-[10px] text-slate-500 font-medium whitespace-nowrap">
+              {getWeekRangeText(selectedDate)}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <span className="font-bold text-slate-800">기기</span>
           <select 
