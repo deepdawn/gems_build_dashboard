@@ -26,7 +26,7 @@ function AppContent() {
         </div>
       )}
       <div className={!isReady ? "pointer-events-none opacity-50" : "transition-opacity duration-300"}>
-        <DashboardLayout>
+        <DashboardLayout activeTab={activeTab}>
           <div className="flex gap-4 mb-4 pb-2 border-b border-slate-200">
             <button 
               className={`px-4 py-2 font-bold rounded-md ${activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}

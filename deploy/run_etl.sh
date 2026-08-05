@@ -12,4 +12,9 @@ cd "$PROJECT_ROOT/utils" || exit 1
 echo "[$(date)] Starting ETL Process..."
 # 가상환경(venv)에 설치된 python을 사용하여 실행
 "$PROJECT_ROOT/.venv/bin/python" dashboard_etl.py
+
+echo "[$(date)] Copying data to dist..."
+# 빌드된 dist 폴더에서 데이터를 바로 읽을 수 있도록 public/data 데이터를 복사
+cp -r "$PROJECT_ROOT/frontend/public/data/"* "$PROJECT_ROOT/frontend/dist/data/"
+
 echo "[$(date)] ETL Process Completed."

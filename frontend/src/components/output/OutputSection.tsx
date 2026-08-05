@@ -14,6 +14,8 @@ export const OutputSection: React.FC = () => {
     targetRevenue: 0,
     revenuePerAsset: 0,
     targetRevenuePerAsset: 0,
+    targetRevenuePerAssetBike: 0,
+    targetRevenuePerAssetKick: 0,
     tripsPerAsset: 0,
     revenueMoM: 0,
     revenuePerAssetMoM: 0,
@@ -73,24 +75,49 @@ export const OutputSection: React.FC = () => {
 
         // 1. Target Revenue
         const goalQuery = `
-          SELECT SUM(경영목표) as target_revenue, 
-                 SUM(경영목표대당매출 * 경영목표할당대수) / NULLIF(SUM(경영목표할당대수), 0) as target_revenue_per_asset
+          SELECT 기종, SUM(경영목표) as target_revenue, 
+                 SUM(경영목표할당대수) as sum_target_alloc,
+                 SUM(경영목표대당매출 * 경영목표할당대수) as sum_target_rev_weighted
           FROM revenue_goal
           WHERE 캠프 = '${camp}' AND 년 = ${year} AND 월 = ${month}
+          GROUP BY 기종
         `;
         const goalRes = await query(goalQuery);
         let targetRevenue = 0;
         let targetRevenuePerAsset = 0;
-        if (goalRes.length > 0) {
-          const rawTarget = goalRes[0].target_revenue || 0;
-          if (isWeekly) {
-            const daysInMonth = new Date(year, month, 0).getDate();
-            targetRevenue = rawTarget / (daysInMonth / 7.0);
-          } else {
-            targetRevenue = rawTarget;
-          }
-          targetRevenuePerAsset = goalRes[0].target_revenue_per_asset || 0;
+        let targetRevenuePerAssetBike = 0;
+        let targetRevenuePerAssetKick = 0;
+        
+        let sumRev = 0;
+        let sumAlloc = 0;
+        let sumWeighted = 0;
+        
+        for (const row of goalRes) {
+            const rev = Number(row.target_revenue) || 0;
+            const alloc = Number(row.sum_target_alloc) || 0;
+            const weighted = Number(row.sum_target_rev_weighted) || 0;
+            const type = row.기종;
+            
+            if (type === '자전거') {
+                targetRevenuePerAssetBike = alloc > 0 ? weighted / alloc : 0;
+            } else if (type === '킥보드') {
+                targetRevenuePerAssetKick = alloc > 0 ? weighted / alloc : 0;
+            }
+            
+            if (device === '전체' || device === type) {
+                sumRev += rev;
+                sumAlloc += alloc;
+                sumWeighted += weighted;
+            }
         }
+
+        if (isWeekly) {
+          const daysInMonth = new Date(year, month, 0).getDate();
+          targetRevenue = sumRev / (daysInMonth / 7.0);
+        } else {
+          targetRevenue = sumRev;
+        }
+        targetRevenuePerAsset = sumAlloc > 0 ? sumWeighted / sumAlloc : 0;
 
         // 2. Current Stats (Camp, Center, Company)
         const statsQuery = `
@@ -196,7 +223,8 @@ export const OutputSection: React.FC = () => {
         if (ignore) return;
         setDailyTrips(dailyTripsChartData);
         setData({
-          totalRevenue, targetRevenue, revenuePerAsset, targetRevenuePerAsset, tripsPerAsset,
+          totalRevenue, targetRevenue, revenuePerAsset, targetRevenuePerAsset, 
+          targetRevenuePerAssetBike, targetRevenuePerAssetKick, tripsPerAsset,
           revenueMoM, revenuePerAssetMoM, centerRevenueAvg, companyRevenueAvg, centerRpaAvg, companyRpaAvg
         });
 
@@ -246,6 +274,15 @@ export const OutputSection: React.FC = () => {
           comparisonText={`${comparisonLabel} 대비 ${data.revenuePerAssetMoM > 0 ? '+' : ''}${data.revenuePerAssetMoM.toFixed(1)}%`}
           extraInfo={`대당회전수 ${data.tripsPerAsset.toFixed(2)}`}
           targetValue={`₩ ${Math.round(data.targetRevenuePerAsset).toLocaleString()}`}
+          targetValueSub={
+            device === '전체' ? (
+              <div className="flex gap-2 text-[10px] text-slate-400 mt-1 justify-end items-center">
+                <span className="font-medium whitespace-nowrap">자전거 ₩ {Math.round(data.targetRevenuePerAssetBike).toLocaleString()}</span>
+                <span className="text-slate-300">|</span>
+                <span className="font-medium whitespace-nowrap">킥보드 ₩ {Math.round(data.targetRevenuePerAssetKick).toLocaleString()}</span>
+              </div>
+            ) : null
+          }
           avgComparisonText={
             <span>
               센터평균: ₩{Math.round(data.centerRpaAvg).toLocaleString()} | 전사평균: ₩{Math.round(data.companyRpaAvg).toLocaleString()}

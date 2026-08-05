@@ -3,19 +3,31 @@ import { useDispatch } from 'react-redux';
 // @ts-ignore
 import KeplerGl from '@kepler.gl/components';
 // @ts-ignore
-import { addDataToMap } from '@kepler.gl/actions';
+import { addDataToMap, updateMap, fitBounds, removeDataset } from '@kepler.gl/actions';
 import { useDuckDB } from '../../hooks/useDuckDB';
 import { useFilters } from '../../context/FilterContext';
 
-// Set up Mapbox token if required by kepler (Kepler usually needs one for the base map)
-// For prototyping, we can just use a dummy or public one, or the user can provide it later.
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || ''; // Add your Mapbox token to .env as VITE_MAPBOX_TOKEN
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
 export function KeplerMapPage() {
   const dispatch = useDispatch();
   const { isReady, query } = useDuckDB();
-  const { center, camp, device, dateType, selectedDate, queryTrigger, partitionsReady } = useFilters();
+  const { center, camp, dateType, selectedDate, queryTrigger, partitionsReady } = useFilters();
   const [dataLoaded, setDataLoaded] = useState(false);
+
+  // 최초 마운트 시 한국 좌표로 맵 상태를 설정합니다.
+  useEffect(() => {
+    dispatch(
+      updateMap({
+        latitude: 36.5,
+        longitude: 127.5,
+        zoom: 6,
+        bearing: 0,
+        pitch: 0,
+        dragRotate: false,
+      })
+    );
+  }, [dispatch]);
 
   useEffect(() => {
     if (!isReady || !partitionsReady || !camp) return;
@@ -24,6 +36,9 @@ export function KeplerMapPage() {
 
     const loadData = async () => {
       try {
+        setDataLoaded(false);
+
+        // === 날짜 조건 생성 ===
         let year = 2026;
         let month = 1;
         let week = 1;
@@ -50,12 +65,15 @@ export function KeplerMapPage() {
           dateCondition = `EXTRACT(YEAR FROM CAST(date AS DATE)) = ${year} AND EXTRACT(WEEK FROM CAST(date AS DATE)) = ${week}`;
         }
 
-        const centerCondOrders = center === '전체' ? '' : `AND high_region_name = '${center}'`;
+        // === 필터 조건 생성 ===
+        const centerCondOrders = center === '전체' ? '' : `AND high_region_name LIKE '%${center}%'`;
         const campCondOrders = camp === '전체' ? '' : `AND middle_region_name = '${camp}'`;
+
+        // === 1. 운행 데이터 쿼리 ===
         const ordersQuery = `
           SELECT 
-            start_lat, start_lng, 
-            end_lat, end_lng, 
+            start_lng as start_lat, start_lat as start_lng, 
+            end_lng as end_lat, end_lat as end_lng, 
             기기구분
           FROM orders
           WHERE 1=1
@@ -65,10 +83,16 @@ export function KeplerMapPage() {
             AND start_lat IS NOT NULL AND start_lng IS NOT NULL
             AND end_lat IS NOT NULL AND end_lng IS NOT NULL
         `;
-        const ordersRes = await query(ordersQuery);
 
-        // 2. Load Deploy Spots
-        const centerCondSpots = center === '전체' ? '' : `AND high_region_name = '${center}'`;
+        console.log('[GeoMap] Orders Query:', ordersQuery);
+        const ordersRes = await query(ordersQuery);
+        console.log(`[GeoMap] Orders result: ${ordersRes.length} rows`);
+        if (ordersRes.length > 0) {
+          console.log('[GeoMap] Orders sample:', ordersRes[0]);
+        }
+
+        // === 2. 배치존 데이터 쿼리 ===
+        const centerCondSpots = center === '전체' ? '' : `AND high_region_name LIKE '%${center}%'`;
         const campCondSpots = camp === '전체' ? '' : `AND mid_region_name = '${camp}'`;
         const spotsQuery = `
           SELECT 
@@ -80,11 +104,14 @@ export function KeplerMapPage() {
             ${campCondSpots}
             AND lat IS NOT NULL AND lng IS NOT NULL
         `;
+
+        console.log('[GeoMap] Spots Query:', spotsQuery);
         const spotsRes = await query(spotsQuery);
+        console.log(`[GeoMap] Spots result: ${spotsRes.length} rows`);
 
         if (cancelled) return;
 
-        // Format for Kepler
+        // === Kepler.gl에 데이터 전달 (config 없이, 자동 레이어 생성) ===
         const datasets = [
           {
             info: {
@@ -99,7 +126,7 @@ export function KeplerMapPage() {
                 { name: 'end_lng', type: 'real' },
                 { name: '기기구분', type: 'string' }
               ],
-              rows: ordersRes.map(r => [r.start_lat, r.start_lng, r.end_lat, r.end_lng, r.기기구분])
+              rows: ordersRes.map((r: any) => [r.start_lat, r.start_lng, r.end_lat, r.end_lng, r.기기구분])
             }
           },
           {
@@ -114,72 +141,124 @@ export function KeplerMapPage() {
                 { name: '배치존명', type: 'string' },
                 { name: '설정대수', type: 'integer' }
               ],
-              rows: spotsRes.map(r => [r.lat, r.lng, r.배치존명, r.설정대수])
+              rows: spotsRes.map((r: any) => [r.lat, r.lng, r.배치존명, r.설정대수])
             }
           }
         ];
 
-        // Default Kepler Config (Optional, but sets up layers automatically)
-        const config = {
-          version: 'v1' as const,
+        console.log(`[GeoMap] Dispatching addDataToMap with ${ordersRes.length} orders, ${spotsRes.length} spots`);
+
+        // 기존 데이터셋을 제거하여 Kepler.gl이 데이터를 캐싱/병합하지 않고 새로 그리도록 강제합니다.
+        dispatch(removeDataset('orders_data'));
+        dispatch(removeDataset('spots_data'));
+
+        const keplerConfig = {
+          version: 'v1',
           config: {
             visState: {
               filters: [],
               layers: [
                 {
-                  id: 'start_heatmap',
-                  type: 'heatmap',
-                  config: {
-                    dataId: 'orders_data',
-                    label: '출발지 히트맵',
-                    color: [18, 147, 154], // Teal/Blueish
-                    columns: { lat: 'start_lat', lng: 'start_lng' },
-                    isVisible: true,
-                    visConfig: { radius: 20, intensity: 1, colorRange: { colors: ["#000000", "#1E96BE", "#28AEA8", "#32C592", "#3CDD7C", "#46F466"] } }
-                  }
-                },
-                {
-                  id: 'end_heatmap',
-                  type: 'heatmap',
-                  config: {
-                    dataId: 'orders_data',
-                    label: '도착지 히트맵',
-                    color: [221, 104, 108], // Red/Pinkish
-                    columns: { lat: 'end_lat', lng: 'end_lng' },
-                    isVisible: true,
-                    visConfig: { radius: 20, intensity: 1, colorRange: { colors: ["#000000", "#7B2C3F", "#A0354E", "#C53E5C", "#EA476B", "#FF507A"] } }
-                  }
-                },
-                {
-                  id: 'spots_point',
+                  id: 'spots_layer',
                   type: 'point',
                   config: {
                     dataId: 'spots_data',
-                    label: '배치존 위치',
-                    color: [255, 203, 153], // Yellow/Orange
-                    columns: { lat: 'lat', lng: 'lng' },
+                    label: '현재 배치존 (Deploy Spots)',
+                    color: [57, 255, 20],
+                    columns: { lat: 'lat', lng: 'lng', altitude: null },
                     isVisible: true,
-                    visConfig: { radius: 10, fixedRadius: false, opacity: 0.8, outline: false }
+                    visConfig: {
+                      radius: 10,
+                      fixedRadius: false,
+                      opacity: 0.8,
+                      outline: false,
+                      thickness: 2,
+                      strokeColor: null,
+                      colorRange: { name: 'Custom Palette', type: 'custom', category: 'Custom', colors: ['#39ff14'] },
+                      strokeColorRange: { name: 'Global Warming', type: 'sequential', category: 'Uber', colors: ['#5A1846', '#900C3F', '#C70039', '#E3611C', '#F1920E', '#FFC300'] },
+                      radiusRange: [0, 50],
+                      filled: true
+                    },
+                    hidden: false,
+                    textLabel: [{ field: null, color: [255, 255, 255], size: 18, offset: [0, 0], anchor: 'start', alignment: 'center' }]
+                  },
+                  visualChannels: {
+                    colorField: null, colorScale: 'quantile', sizeField: null, sizeScale: 'linear', strokeColorField: null, strokeColorScale: 'quantile'
                   }
+                },
+                {
+                  id: 'start_layer',
+                  type: 'heatmap',
+                  config: {
+                    dataId: 'orders_data',
+                    label: 'start',
+                    color: [255, 0, 0],
+                    columns: { lat: 'start_lat', lng: 'start_lng' },
+                    isVisible: true,
+                    visConfig: {
+                      opacity: 0.8,
+                      colorRange: {
+                        name: 'Custom Red', type: 'sequential', category: 'Custom',
+                        colors: ['#ffffff', '#ffdfdf', '#ffb3b3', '#ff6666', '#cc0000', '#800000']
+                      },
+                      radius: 20,
+                      intensity: 0.1,
+                      threshold: 0.6
+                    },
+                    hidden: false,
+                    textLabel: []
+                  },
+                  visualChannels: { weightField: null, weightScale: 'linear' }
+                },
+                {
+                  id: 'end_layer',
+                  type: 'heatmap',
+                  config: {
+                    dataId: 'orders_data',
+                    label: 'end',
+                    color: [0, 0, 255],
+                    columns: { lat: 'end_lat', lng: 'end_lng' },
+                    isVisible: true,
+                    visConfig: {
+                      opacity: 0.8,
+                      colorRange: {
+                        name: 'Custom Blue', type: 'sequential', category: 'Custom',
+                        colors: ['#ffffff', '#dfdfff', '#b3b3ff', '#6666ff', '#0000cc', '#000080']
+                      },
+                      radius: 20,
+                      intensity: 0.1,
+                      threshold: 0.6
+                    },
+                    hidden: false,
+                    textLabel: []
+                  },
+                  visualChannels: { weightField: null, weightScale: 'linear' }
                 }
               ],
               interactionConfig: {
                 tooltip: {
                   fieldsToShow: {
-                    spots_data: [{ name: '배치존명', format: null }, { name: '설정대수', format: null }]
+                    spots_data: [{ name: '배치존명', format: null }, { name: '설정대수', format: null }],
+                    orders_data: [{ name: '기기구분', format: null }]
                   },
-                  enabled: true
-                }
-              }
+                  compareMode: false, compareType: 'absolute', enabled: true
+                },
+                brush: { size: 0.5, enabled: false },
+                geocoder: { enabled: false },
+                coordinate: { enabled: false }
+              },
+              layerBlending: 'additive',
+              layerOrder: ['spots_layer', 'start_layer', 'end_layer'],
+              splitMaps: [],
+              animationConfig: { currentTime: null, speed: 1 }
             },
-            mapState: {
-              bearing: 0,
-              dragRotate: false,
-              latitude: 36.5,
-              longitude: 127.5,
-              pitch: 0,
-              zoom: 6,
-              isSplit: false
+            mapState: { bearing: 0, dragRotate: false, latitude: 36.5, longitude: 127.5, pitch: 0, zoom: 6, isSplit: false },
+            mapStyle: {
+              styleType: 'dark',
+              topLayerGroups: {},
+              visibleLayerGroups: { label: true, road: true, border: false, building: true, water: true, land: true, '3d building': false },
+              threeDBuildingColor: [9.665468314072013, 17.18305478057247, 31.1442867897876],
+              mapStyles: {}
             }
           }
         };
@@ -189,17 +268,69 @@ export function KeplerMapPage() {
             datasets,
             options: {
               centerMap: false,
-              readOnly: false
+              readOnly: false,
+              keepExistingConfig: false
             },
-            config: config as any
+            config: keplerConfig as any
           })
         );
+
+        // Calculate bounding box to auto-zoom to the selected region
+        if (spotsRes.length > 0 || ordersRes.length > 0) {
+          let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+          
+          spotsRes.forEach((r: any) => {
+            if (r.lat < minLat) minLat = r.lat;
+            if (r.lat > maxLat) maxLat = r.lat;
+            if (r.lng < minLng) minLng = r.lng;
+            if (r.lng > maxLng) maxLng = r.lng;
+          });
+          
+          ordersRes.forEach((r: any) => {
+            // Use the aliased start_lat/start_lng from ordersRes
+            if (r.start_lat < minLat) minLat = r.start_lat;
+            if (r.start_lat > maxLat) maxLat = r.start_lat;
+            if (r.start_lng < minLng) minLng = r.start_lng;
+            if (r.start_lng > maxLng) maxLng = r.start_lng;
+          });
+
+          // Default bounds if calculation failed
+          if (minLat === 90) {
+            minLat = 33.0; maxLat = 38.5; minLng = 125.0; maxLng = 130.0;
+          }
+
+          // Add a small padding to bounds
+          const latPadding = (maxLat - minLat) * 0.1 || 0.01;
+          const lngPadding = (maxLng - minLng) * 0.1 || 0.01;
+
+          // Dispatch fitBounds to automatically zoom into the selected center/camp
+          setTimeout(() => {
+            dispatch(
+              fitBounds([
+                minLng - lngPadding, 
+                minLat - latPadding, 
+                maxLng + lngPadding, 
+                maxLat + latPadding
+              ])
+            );
+          }, 500);
+        } else {
+          // Fallback to Korea center if no data
+          setTimeout(() => {
+            dispatch(
+              updateMap({
+                latitude: 36.5,
+                longitude: 127.5,
+                zoom: 6,
+              })
+            );
+          }, 500);
+        }
 
         setDataLoaded(true);
 
       } catch (e: any) {
-        console.error("Error loading map data:", e);
-        // 오류가 발생해도 로딩 화면을 없애고 에러를 콘솔에 기록합니다.
+        console.error("[GeoMap] Error loading map data:", e);
         setDataLoaded(true);
       }
     };
@@ -209,13 +340,52 @@ export function KeplerMapPage() {
     return () => {
       cancelled = true;
     };
-  }, [isReady, partitionsReady, center, camp, device, dateType, selectedDate, queryTrigger, dispatch, query]);
+  }, [isReady, partitionsReady, center, camp, dateType, selectedDate, queryTrigger, dispatch, query]);
 
   return (
     <div style={{ height: 'calc(100vh - 80px)', width: '100%', position: 'relative' }}>
+      {/* 범례 (Legend) 박스 추가 */}
+      <div style={{
+        position: 'absolute',
+        top: '16px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 40,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        padding: '10px 20px',
+        borderRadius: '8px',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        display: 'flex',
+        gap: '24px',
+        fontWeight: 'bold',
+        fontSize: '14px',
+        color: '#334155',
+        border: '1px solid #e2e8f0',
+        pointerEvents: 'none' // 클릭 이벤트가 지도로 통과되도록
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>🔴</span> 출발지 (Start)
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>🔵</span> 도착지 (End)
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>🟢</span> 현재 배치존
+        </div>
+      </div>
+
       {!dataLoaded && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/50 backdrop-blur-sm">
-          <div className="text-slate-700 font-bold text-xl">맵 데이터 로딩 중...</div>
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 50,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(255,255,255,0.5)',
+          backdropFilter: 'blur(4px)',
+        }}>
+          <div style={{ color: '#334155', fontWeight: 'bold', fontSize: '1.25rem' }}>맵 데이터 로딩 중...</div>
         </div>
       )}
       <KeplerGl

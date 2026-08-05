@@ -3,7 +3,11 @@ import { MapPin, Calendar, CalendarDays, ArrowRight, Building2 } from 'lucide-re
 import { useFilters } from '../../context/FilterContext';
 import { useDuckDB } from '../../hooks/useDuckDB';
 
-export const FilterBar: React.FC = () => {
+interface FilterBarProps {
+  activeTab?: string;
+}
+
+export const FilterBar: React.FC<FilterBarProps> = ({ activeTab }) => {
   const { 
     center, setCenter, 
     camp, setCamp, 
@@ -15,6 +19,24 @@ export const FilterBar: React.FC = () => {
   const { isReady, query } = useDuckDB();
   const [centers, setCenters] = useState<string[]>(['강남RS']);
   const [camps, setCamps] = useState<string[]>(['서초캠프']);
+
+  // GeoMap 탭일 때 무조건 '주 단위'로 고정
+  useEffect(() => {
+    if (activeTab === 'map' && dateType !== '주 단위') {
+      setDateType('주 단위');
+      
+      const now = new Date();
+      const prevDate = new Date(now.getTime() - 7 * 86400000);
+      const dPrev = new Date(Date.UTC(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate()));
+      const dayNumPrev = dPrev.getUTCDay() || 7;
+      dPrev.setUTCDate(dPrev.getUTCDate() + 4 - dayNumPrev);
+      const yearStartPrev = new Date(Date.UTC(dPrev.getUTCFullYear(), 0, 1));
+      const prevWeek = Math.ceil((((dPrev.getTime() - yearStartPrev.getTime()) / 86400000) + 1) / 7);
+      const prevWeekYear = Number(String(dPrev.getUTCFullYear()).slice(-2));
+      
+      setSelectedDate(`${prevWeekYear}-W${prevWeek}`);
+    }
+  }, [activeTab, dateType, setDateType, setSelectedDate]);
 
   useEffect(() => {
     if (isReady && queryTrigger > 0) {
@@ -77,7 +99,13 @@ export const FilterBar: React.FC = () => {
     }
   }
 
-  const dateOptions = dateType === '월 누적(MTD)' ? mtdOptions : weeklyOptions;
+  // 맵 탭일 경우 주 단위 옵션을 최근 4주로만 제한
+  let displayWeeklyOptions = weeklyOptions;
+  if (activeTab === 'map') {
+    displayWeeklyOptions = weeklyOptions.slice(-4);
+  }
+
+  const dateOptions = dateType === '월 누적(MTD)' ? mtdOptions : displayWeeklyOptions;
 
   const handleDateTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newType = e.target.value;
@@ -121,9 +149,10 @@ export const FilterBar: React.FC = () => {
         <Calendar size={18} className="text-blue-700" />
         <span className="font-bold">날짜 타입:</span>
         <select 
-          className="bg-transparent font-medium focus:outline-none cursor-pointer border-b border-slate-300 pb-0.5"
+          className={`bg-transparent font-medium focus:outline-none cursor-pointer border-b border-slate-300 pb-0.5 ${activeTab === 'map' ? 'opacity-50 cursor-not-allowed' : ''}`}
           value={dateType}
           onChange={handleDateTypeChange}
+          disabled={activeTab === 'map'}
         >
           <option value="월 누적(MTD)">월 누적(MTD)</option>
           <option value="주 단위">주 단위</option>

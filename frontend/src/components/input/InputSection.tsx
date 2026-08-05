@@ -32,17 +32,22 @@ export const InputSection: React.FC = () => {
   const [batteryCompany, setBatteryCompany] = useState(0);
 
   // Existing Cards Data
-  const [unusedData, setUnusedData] = useState<{name: string; value: number}[]>([]);
+  const [unusedData, setUnusedData] = useState<{name: string; value: number; value48?: number}[]>([]);
   const [unusedRate, setUnusedRate] = useState(0);
+  const [unusedRate48, setUnusedRate48] = useState(0);
 
   const [deploymentCount, setDeploymentCount] = useState(0);
   const [deploymentCountMoM, setDeploymentCountMoM] = useState(0);
   const [dispatchRate24h, setDispatchRate24h] = useState(0);
+  const [dispatchRate12h, setDispatchRate12h] = useState(0);
+  const [dispatchRate6h, setDispatchRate6h] = useState(0);
   const [dispatchRate24hMoM, setDispatchRate24hMoM] = useState(0);
   const [dispatchRate24hCompanyDiff, setDispatchRate24hCompanyDiff] = useState(0);
 
   const [currentAllocation, setCurrentAllocation] = useState(0);
   const [prevAllocation, setPrevAllocation] = useState(0);
+  const [currentOperated, setCurrentOperated] = useState(0);
+  const [prevOperated, setPrevOperated] = useState(0);
 
   const [managementZoneCount, setManagementZoneCount] = useState(0);
   const [activeZoneRate, setActiveZoneRate] = useState(0);
@@ -209,38 +214,48 @@ export const InputSection: React.FC = () => {
 
         // 2. Unused
         const unusedCurrentQuery = `
-          SELECT SUM(deactivate_72h_count) as unused, SUM(total_vehicle_count) as total
+          SELECT SUM(deactivate_72h_count) as unused_72, SUM(deactivate_48h_count) as unused_48, SUM(total_vehicle_count) as total
           FROM unused_72h 
           WHERE middle_region_name = '${camp}' AND ${dateCondition} ${devUnused}
         `;
         const unusedCurrentRes = await query(unusedCurrentQuery);
+        let currentUnused72 = 0;
+        let currentUnused48 = 0;
         if (unusedCurrentRes.length > 0) {
-          const tUnused = Number(unusedCurrentRes[0].unused) || 0;
+          const tUnused72 = Number(unusedCurrentRes[0].unused_72) || 0;
+          const tUnused48 = Number(unusedCurrentRes[0].unused_48) || 0;
           const tTotal = Number(unusedCurrentRes[0].total) || 0;
-          setUnusedRate(tTotal > 0 ? (tUnused / tTotal) * 100 : 0);
-        } else {
-          setUnusedRate(0);
+          currentUnused72 = tTotal > 0 ? (tUnused72 / tTotal) * 100 : 0;
+          currentUnused48 = tTotal > 0 ? (tUnused48 / tTotal) * 100 : 0;
         }
+        setUnusedRate(currentUnused72);
+        setUnusedRate48(currentUnused48);
 
         const unusedChartQuery = `
           SELECT 'W' || EXTRACT(WEEK FROM CAST(date AS DATE)) as day, 
                  date_trunc('week', CAST(date AS DATE)) as week_start,
-                 SUM(deactivate_72h_count) as unused, SUM(total_vehicle_count) as total
+                 SUM(deactivate_72h_count) as unused_72, SUM(deactivate_48h_count) as unused_48, SUM(total_vehicle_count) as total
           FROM unused_72h 
           WHERE middle_region_name = '${camp}' AND ${chart4WeekCondition} ${devUnused}
           GROUP BY day, week_start
           ORDER BY week_start
         `;
         const unusedChartRes = await query(unusedChartQuery);
-        setUnusedData(unusedChartRes.map((r: any) => ({ name: r.day, value: r.total > 0 ? (r.unused / r.total) * 100 : 0 })));
+        setUnusedData(unusedChartRes.map((r: any) => ({ 
+          name: r.day, 
+          value: r.total > 0 ? (r.unused_72 / r.total) * 100 : 0,
+          value48: r.total > 0 ? (r.unused_48 / r.total) * 100 : 0
+        })));
 
         // 3. Allocation (Card C)
-        const allocQuery = `SELECT AVG(daily_alloc) as avg_alloc FROM (SELECT date, SUM(할당대수) as daily_alloc FROM daily_stats WHERE middle_region_name = '${camp}' AND ${dateCondition} ${devDaily} GROUP BY date)`;
-        const prevAllocQuery = `SELECT AVG(daily_alloc) as avg_alloc FROM (SELECT date, SUM(할당대수) as daily_alloc FROM daily_stats WHERE middle_region_name = '${camp}' AND ${prevDateCondition} ${devDaily} GROUP BY date)`;
+        const allocQuery = `SELECT SUM(할당대수)/NULLIF(COUNT(DISTINCT date),0) as avg_alloc, SUM(운행대수) as sum_operated, SUM(할당대수) as sum_alloc FROM daily_stats WHERE middle_region_name = '${camp}' AND ${dateCondition} ${devDaily}`;
+        const prevAllocQuery = `SELECT SUM(할당대수)/NULLIF(COUNT(DISTINCT date),0) as avg_alloc, SUM(운행대수) as sum_operated, SUM(할당대수) as sum_alloc FROM daily_stats WHERE middle_region_name = '${camp}' AND ${prevDateCondition} ${devDaily}`;
         const allocR = await query(allocQuery);
         const pAllocR = await query(prevAllocQuery);
         setCurrentAllocation(allocR.length > 0 ? Number(allocR[0].avg_alloc) || 0 : 0);
+        setCurrentOperated(allocR.length > 0 ? (Number(allocR[0].sum_operated) / Number(allocR[0].sum_alloc)) * Number(allocR[0].avg_alloc) || 0 : 0);
         setPrevAllocation(pAllocR.length > 0 ? Number(pAllocR[0].avg_alloc) || 0 : 0);
+        setPrevOperated(pAllocR.length > 0 ? (Number(pAllocR[0].sum_operated) / Number(pAllocR[0].sum_alloc)) * Number(pAllocR[0].avg_alloc) || 0 : 0);
 
         // 4. Points & Deployment
         const deploySpotQuery = `SELECT COUNT(DISTINCT deploy_zone_id) as total_zones FROM deploy_spot WHERE mid_region_name = '${camp}'`;
@@ -271,10 +286,18 @@ export const InputSection: React.FC = () => {
         const pDeploy = pdCountRes.length > 0 ? Number(pdCountRes[0].total_deploy) || 0 : 0;
         setDeploymentCountMoM(pDeploy > 0 ? ((cDeploy - pDeploy) / pDeploy) * 100 : 0);
 
-        const dispatchQuery = `SELECT SUM(CASE WHEN "출루까지 시간" <= 24 THEN 배치수 ELSE 0 END) as d24, SUM(배치수) as tot FROM deploy_used_time WHERE 중지역 = '${camp}' AND ${dateCondition} ${devZone}`;
+        const dispatchQuery = `
+          SELECT 
+            SUM(CASE WHEN "출루까지 시간" <= 24 THEN 배치수 ELSE 0 END) as d24, 
+            SUM(CASE WHEN "출루까지 시간" <= 12 THEN 배치수 ELSE 0 END) as d12, 
+            SUM(CASE WHEN "출루까지 시간" <= 6 THEN 배치수 ELSE 0 END) as d6, 
+            SUM(배치수) as tot 
+          FROM deploy_used_time WHERE 중지역 = '${camp}' AND ${dateCondition} ${devZone}`;
         const dispRes = await query(dispatchQuery);
         const cDisp = dispRes.length > 0 ? (Number(dispRes[0].tot) > 0 ? (Number(dispRes[0].d24)/Number(dispRes[0].tot))*100 : 0) : 0;
         setDispatchRate24h(cDisp);
+        setDispatchRate12h(dispRes.length > 0 ? (Number(dispRes[0].tot) > 0 ? (Number(dispRes[0].d12)/Number(dispRes[0].tot))*100 : 0) : 0);
+        setDispatchRate6h(dispRes.length > 0 ? (Number(dispRes[0].tot) > 0 ? (Number(dispRes[0].d6)/Number(dispRes[0].tot))*100 : 0) : 0);
 
         const pDispatchQuery = `SELECT SUM(CASE WHEN "출루까지 시간" <= 24 THEN 배치수 ELSE 0 END) as d24, SUM(배치수) as tot FROM deploy_used_time WHERE 중지역 = '${camp}' AND ${prevDateCondition} ${devZone}`;
         const pDispRes = await query(pDispatchQuery);
@@ -332,11 +355,13 @@ export const InputSection: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-4">
-        <CardA_Unused data={unusedData} currentRate={unusedRate} />
+        <CardA_Unused data={unusedData} currentRate={unusedRate} currentRate48={unusedRate48} />
         <CardB_Deployment 
           deploymentCount={deploymentCount}
           deploymentCountMoM={deploymentCountMoM}
           dispatchRate24h={dispatchRate24h}
+          dispatchRate12h={dispatchRate12h}
+          dispatchRate6h={dispatchRate6h}
           dispatchRate24hMoM={dispatchRate24hMoM}
           dispatchRate24hCompanyDiff={dispatchRate24hCompanyDiff}
           comparisonLabel={dateType === '주 단위' ? '전주' : '전월'}
@@ -344,6 +369,8 @@ export const InputSection: React.FC = () => {
         <CardC_Allocation 
           currentAllocation={currentAllocation} 
           prevAllocation={prevAllocation} 
+          currentOperated={currentOperated}
+          prevOperated={prevOperated}
           comparisonLabel={dateType === '주 단위' ? '전주' : '전월'} 
           currentLabel={dateType === '주 단위' ? '현재 주' : '현재 월'}
         />

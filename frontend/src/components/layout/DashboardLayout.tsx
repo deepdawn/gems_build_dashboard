@@ -3,9 +3,10 @@ import { FilterBar } from './FilterBar';
 
 interface Props {
   children: React.ReactNode;
+  activeTab?: string;
 }
 
-export const DashboardLayout: React.FC<Props> = ({ children }) => {
+export const DashboardLayout: React.FC<Props> = ({ children, activeTab }) => {
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans p-8 max-w-[1400px] mx-auto">
       <header className="bg-white px-8 py-4 border-b border-slate-200 text-center mb-4">
@@ -19,7 +20,7 @@ export const DashboardLayout: React.FC<Props> = ({ children }) => {
         <ul className="grid grid-cols-2 gap-x-4 gap-y-2 list-disc list-inside px-1">
           <li><strong>대당회전수 (기기당 이용 횟수)</strong> = 총 운행 수 / 총 할당대수</li>
           <li><strong>대당매출 (기기당 매출)</strong> = 총 매출 / 총 할당대수</li>
-          <li><strong>가동률 (배치존 중 배치)</strong> = 운영 배치존 수 / 관리 배치존 수</li>
+          <li><strong>배치존 활성도</strong> = 운영 배치존 수 / 관리 배치존 수</li>
           <li><strong>목표 달성률</strong> = 총 매출 / 목표 매출 (MTD 비교)</li>
         </ul>
         <div className="mt-1 px-1 text-slate-500 text-[13px]">
@@ -27,7 +28,7 @@ export const DashboardLayout: React.FC<Props> = ({ children }) => {
         </div>
       </div>
       
-      <FilterBar />
+      <FilterBar activeTab={activeTab} />
       
       <main className="flex flex-col gap-6">
         {children}

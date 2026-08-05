@@ -34,6 +34,8 @@ export const DailyTripsChart: React.FC<DailyTripsChartProps> = ({ data }) => {
               tickLine={false} 
               tick={{ fontSize: 12, fill: '#64748b' }}
               dy={10}
+              interval="preserveStartEnd"
+              minTickGap={15}
             >
               <Label value="일자" offset={-10} position="insideBottom" fill="#64748b" fontSize={12} />
             </XAxis>

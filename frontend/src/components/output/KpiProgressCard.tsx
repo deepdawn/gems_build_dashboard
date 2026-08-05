@@ -8,6 +8,7 @@ interface Props {
   comparisonColor?: 'blue' | 'red';
   extraInfo?: string;
   targetValue?: string;
+  targetValueSub?: React.ReactNode;
   avgComparisonText?: React.ReactNode;
 }
 
@@ -19,6 +20,7 @@ export const KpiProgressCard: React.FC<Props> = ({
   comparisonColor = 'blue',
   extraInfo,
   targetValue,
+  targetValueSub,
   avgComparisonText
 }) => {
   return (
@@ -33,6 +35,7 @@ export const KpiProgressCard: React.FC<Props> = ({
           <div className="text-sm text-slate-500 font-bold mb-1">목표달성</div>
           <div className="text-2xl font-black text-blue-800 tracking-tight leading-none">{goalPercent.toFixed(1)}%</div>
           {targetValue && <div className="text-xs text-slate-400 font-semibold mt-1.5 whitespace-nowrap">목표: {targetValue}</div>}
+          {targetValueSub && targetValueSub}
         </div>
       </div>
       
@@ -41,7 +44,6 @@ export const KpiProgressCard: React.FC<Props> = ({
         <div className="flex justify-between text-xs text-slate-500 font-medium mb-2 px-1">
           <span>0%</span>
           <span className="absolute font-bold text-slate-700" style={{ left: `${goalPercent}%`, transform: 'translateX(-50%)', top: '-22px' }}>
-            {goalPercent.toFixed(1)}%
           </span>
           <span>100%</span>
         </div>

@@ -94,12 +94,13 @@ def main():
     if load_rich_orders_polars is not None:
         try:
             target_date = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+            start_date = (datetime.now() - timedelta(days=28)).strftime('%Y-%m-%d')
             # Extract specific columns
             cols = ['dt', 'low_region_id', 'start_lat', 'start_lng', 'end_lat', 'end_lng', 'vehicle_type']
             
-            print(f"Loading rich_orders for {target_date}...")
+            print(f"Loading rich_orders from {start_date} to {target_date}...")
             df_orders = load_rich_orders_polars(
-                target_date, 
+                start_date, 
                 target_date, 
                 columns=cols,
                 base_path="/Users/galaxy.jang/Google Drive/공유 드라이브/gbike.rich_orders"

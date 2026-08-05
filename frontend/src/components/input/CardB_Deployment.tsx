@@ -14,6 +14,8 @@ interface CardBProps {
   deploymentCount?: number;
   deploymentCountMoM?: number;
   dispatchRate24h?: number;
+  dispatchRate12h?: number;
+  dispatchRate6h?: number;
   dispatchRate24hMoM?: number;
   dispatchRate24hCompanyDiff?: number;
   comparisonLabel?: string;
@@ -23,6 +25,8 @@ export const CardB_Deployment: React.FC<CardBProps> = ({
   deploymentCount = 0,
   deploymentCountMoM = 0,
   dispatchRate24h = 0,
+  dispatchRate12h = 0,
+  dispatchRate6h = 0,
   dispatchRate24hMoM = 0,
   dispatchRate24hCompanyDiff = 0,
   comparisonLabel = '전월'
@@ -30,8 +34,8 @@ export const CardB_Deployment: React.FC<CardBProps> = ({
   return (
     <div className="bg-white border border-green-200 rounded-lg p-5 shadow-sm flex flex-col h-[190px]">
       <div className="flex items-center gap-2 mb-2">
-        <div className="bg-[#438B31] text-white w-6 h-6 rounded flex items-center justify-center font-bold text-sm shadow-sm">D</div>
-        <span className="font-bold text-green-900 text-lg">배치존 배치수 / 24h 출루율</span>
+        <div className="bg-[#438B31] text-white w-6 h-6 rounded flex items-center justify-center font-bold text-sm shadow-sm">E</div>
+        <span className="font-bold text-green-900 text-lg">배치존 배치수 | n시간 내 출루율</span>
       </div>
       
       <div className="flex justify-between items-end flex-grow">
@@ -42,16 +46,28 @@ export const CardB_Deployment: React.FC<CardBProps> = ({
             <div className="text-[13px] font-semibold text-slate-500">{comparisonLabel} <span className={deploymentCountMoM >= 0 ? "text-blue-600" : "text-red-500"}>{deploymentCountMoM > 0 ? '+' : ''}{deploymentCountMoM.toFixed(1)}%</span></div>
           </div>
           <div>
-            <div className="text-[13px] text-slate-500 font-bold mb-1">24h 출루율</div>
-            <div className="text-[36px] font-black leading-none mb-2 tracking-tight">{dispatchRate24h.toFixed(1)}<span className="text-xl">%</span></div>
-            <div className="text-[13px] font-semibold text-slate-500">
-              {comparisonLabel} <span className={dispatchRate24hMoM >= 0 ? "text-blue-600" : "text-red-500"}>{dispatchRate24hMoM > 0 ? '+' : ''}{dispatchRate24hMoM.toFixed(1)}%p</span> / 전사 <span className={dispatchRate24hCompanyDiff >= 0 ? "text-blue-600" : "text-red-500"}>{dispatchRate24hCompanyDiff > 0 ? '+' : ''}{dispatchRate24hCompanyDiff.toFixed(1)}%p</span>
+            <div className="flex gap-4 mb-2">
+              <div>
+                <div className="text-[11px] text-slate-500 font-bold mb-1">6h 출루율</div>
+                <div className={`text-[24px] font-black leading-none tracking-tight ${dispatchRate6h <= 80 ? 'text-red-500' : 'text-slate-900'}`}>{dispatchRate6h.toFixed(1)}<span className="text-sm">%</span></div>
+              </div>
+              <div>
+                <div className="text-[11px] text-slate-500 font-bold mb-1">12h 출루율</div>
+                <div className={`text-[24px] font-black leading-none tracking-tight ${dispatchRate12h <= 80 ? 'text-red-500' : 'text-slate-900'}`}>{dispatchRate12h.toFixed(1)}<span className="text-sm">%</span></div>
+              </div>
+              <div>
+                <div className="text-[11px] text-slate-500 font-bold mb-1">24h 출루율</div>
+                <div className={`text-[24px] font-black leading-none tracking-tight ${dispatchRate24h <= 80 ? 'text-red-500' : 'text-slate-900'}`}>{dispatchRate24h.toFixed(1)}<span className="text-sm">%</span></div>
+              </div>
+            </div>
+            <div className="text-[11px] font-semibold text-slate-500 mt-1">
+              [24h] {comparisonLabel} <span className={dispatchRate24hMoM >= 0 ? "text-blue-600" : "text-red-500"}>{dispatchRate24hMoM > 0 ? '+' : ''}{dispatchRate24hMoM.toFixed(1)}%p</span> / 전사 <span className={dispatchRate24hCompanyDiff >= 0 ? "text-blue-600" : "text-red-500"}>{dispatchRate24hCompanyDiff > 0 ? '+' : ''}{dispatchRate24hCompanyDiff.toFixed(1)}%p</span>
             </div>
           </div>
         </div>
         
-        <div className="w-[130px] h-[90px] relative flex flex-col justify-end">
-          <div className="absolute right-0 top-0 text-[10px] text-slate-500 font-medium">*할당대수 기준</div>
+        <div className="w-[110px] h-[90px] relative flex flex-col justify-end">
+          <div className="absolute right-0 top-0 text-[9px] text-slate-500 font-medium">*할당대수 기준</div>
           <div className="flex justify-end text-[10px] gap-2 mb-1 mt-4">
              <span className="flex items-center gap-1 font-bold text-slate-600"><span className="w-2.5 h-2.5 rounded-full bg-[#86B971]"></span>배치수</span>
              <span className="flex items-center gap-1 font-bold text-slate-600"><span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>출루율</span>

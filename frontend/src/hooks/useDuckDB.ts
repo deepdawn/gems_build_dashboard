@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getDBConnection, getDB } from '../lib/duckdb';
 
 export function useDuckDB() {
@@ -11,7 +11,7 @@ export function useDuckDB() {
       .catch((err) => setError(err));
   }, []);
 
-  const query = async (sql: string) => {
+  const query = useCallback(async (sql: string) => {
     const db = await getDB();
     const localConn = await db.connect();
     try {
@@ -20,7 +20,7 @@ export function useDuckDB() {
     } finally {
       await localConn.close();
     }
-  };
+  }, []);
 
   return { isReady, error, query };
 }
