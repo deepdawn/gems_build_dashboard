@@ -141,9 +141,23 @@ def main():
                     df_orders = df_orders.with_columns(
                         pl.col('dt').cast(pl.Date).alias('date')
                     )
+                    
+                    # 용량 최적화를 위해 위도/경도 64비트 실수를 32비트 실수로 강등 (정밀도 영향 극미)
+                    if 'start_lat' in df_orders.columns:
+                        df_orders = df_orders.with_columns([
+                            pl.col('start_lat').cast(pl.Float32),
+                            pl.col('start_lng').cast(pl.Float32),
+                            pl.col('end_lat').cast(pl.Float32),
+                            pl.col('end_lng').cast(pl.Float32)
+                        ])
+                        
+                    # 프론트엔드(Kepler 맵)에서 사용하는 필수 컬럼만 남기고 모두 제거하여 극단적 용량 다이어트
+                    keep_cols = ['start_lat', 'start_lng', 'end_lat', 'end_lng', '기기구분', 'date']
+                    df_orders = df_orders.select([col for col in keep_cols if col in df_orders.columns])
                 
                 out_path = os.path.join(frontend_data_dir, f"orders.parquet")
-                df_orders.write_parquet(out_path)
+                # 고효율 압축 포맷 zstd 적용
+                df_orders.write_parquet(out_path, compression='zstd')
                 print(f"Successfully processed rich_orders: {out_path}")
             else:
                 print(f"No orders found for {target_date}.")

@@ -11,6 +11,7 @@ dist/
 .DS_Store
 
 # Data (Now allowing parquet files to be pushed to GitHub for Vercel deployment)
+
 # Logs
 logs/
 

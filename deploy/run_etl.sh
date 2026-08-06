@@ -20,7 +20,15 @@ cp -r "$PROJECT_ROOT/frontend/public/data/"* "$PROJECT_ROOT/frontend/dist/data/"
 echo "[$(date)] Pushing updated data to GitHub..."
 cd "$PROJECT_ROOT" || exit 1
 git add frontend/public/data/*.parquet
-git commit -m "Auto-update dashboard data" || echo "No changes to commit"
-git push origin main
+git commit -am "Auto-update dashboard metadata/scripts and data" || echo "No changes to commit"
+
+# 크론(Cron) 등 백그라운드 환경에서 SSH 비밀번호 대기(Hang) 현상을 방지하기 위해
+# 이미 인증된 GitHub CLI(gh)의 토큰을 가져와 HTTPS 방식으로 푸시합니다.
+if command -v gh &> /dev/null; then
+    GITHUB_TOKEN=$(gh auth token)
+    git push "https://deepdawn:${GITHUB_TOKEN}@github.com/deepdawn/gems_build_dashboard.git" main
+else
+    git push origin main
+fi
 
 echo "[$(date)] ETL Process Completed."
