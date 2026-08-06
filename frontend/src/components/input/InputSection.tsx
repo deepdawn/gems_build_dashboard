@@ -261,9 +261,7 @@ export const InputSection: React.FC = () => {
           const batteryCurrentQuery = `
             SELECT SUM(battery_0_20) as b_0_20, SUM(total_vehicle_count) as total
             FROM battery_data 
-            WHERE 중지역 = '${camp}' AND dt = (
-              SELECT MAX(dt) FROM battery_data WHERE 중지역 = '${camp}' AND EXTRACT(YEAR FROM CAST(dt AS DATE)) = ${year} AND EXTRACT(MONTH FROM CAST(dt AS DATE)) = ${month}
-            ) ${getDeviceCond('기기타입')}
+            WHERE 중지역 = '${camp}' AND ${dateCondition} ${getDeviceCond('기기타입')}
           `;
           const batCurrentRes = await query(batteryCurrentQuery);
           if (batCurrentRes.length > 0) {
@@ -439,9 +437,9 @@ export const InputSection: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-4">
-        <CardC_TaskPerAsset data={taskChart} currentValue={taskValue} centerAvg={taskCenter} companyAvg={taskCompany} />
-        <CardD_ReallocPerAsset data={reallocChart} currentValue={reallocValue} centerAvg={reallocCenter} companyAvg={reallocCompany} />
-        <CardE_BatteryPerAsset data={batteryChart} currentValue={batteryValue} centerAvg={batteryCenter} companyAvg={batteryCompany} />
+        <CardC_TaskPerAsset data={taskChart} currentValue={taskValue} centerAvg={taskCenter} companyAvg={taskCompany} periodLabel={selectedDate} />
+        <CardD_ReallocPerAsset data={reallocChart} currentValue={reallocValue} centerAvg={reallocCenter} companyAvg={reallocCompany} periodLabel={selectedDate} />
+        <CardE_BatteryPerAsset data={batteryChart} currentValue={batteryValue} centerAvg={batteryCenter} companyAvg={batteryCompany} periodLabel={selectedDate} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-4">

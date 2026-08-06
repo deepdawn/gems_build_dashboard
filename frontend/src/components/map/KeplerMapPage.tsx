@@ -12,7 +12,7 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 export function KeplerMapPage() {
   const dispatch = useDispatch();
   const { isReady, query } = useDuckDB();
-  const { center, camp, dateType, selectedDate, queryTrigger, partitionsReady } = useFilters();
+  const { center, camp, dateType, selectedDate, device, queryTrigger, partitionsReady } = useFilters();
   const [dataLoaded, setDataLoaded] = useState(false);
 
   // 최초 마운트 시 한국 좌표로 맵 상태를 설정합니다.
@@ -68,6 +68,10 @@ export function KeplerMapPage() {
         // === 필터 조건 생성 ===
         const centerCondOrders = center === '전체' ? '' : `AND high_region_name LIKE '%${center}%'`;
         const campCondOrders = camp === '전체' ? '' : `AND middle_region_name = '${camp}'`;
+        
+        let deviceCondOrders = '';
+        if (device === '자전거') deviceCondOrders = `AND 기기구분 IN ('자전거', 'bicycle')`;
+        if (device === '킥보드') deviceCondOrders = `AND 기기구분 IN ('킥보드', 'scooter')`;
 
         // === 1. 운행 데이터 쿼리 ===
         const ordersQuery = `
@@ -79,6 +83,7 @@ export function KeplerMapPage() {
           WHERE 1=1
             ${centerCondOrders}
             ${campCondOrders}
+            ${deviceCondOrders}
             AND ${dateCondition}
             AND start_lat IS NOT NULL AND start_lng IS NOT NULL
             AND end_lat IS NOT NULL AND end_lng IS NOT NULL
@@ -340,7 +345,7 @@ export function KeplerMapPage() {
     return () => {
       cancelled = true;
     };
-  }, [isReady, partitionsReady, center, camp, dateType, selectedDate, queryTrigger, dispatch, query]);
+  }, [isReady, partitionsReady, center, camp, dateType, selectedDate, device, queryTrigger, dispatch, query]);
 
   return (
     <div style={{ height: 'calc(100vh - 80px)', width: '100%', position: 'relative' }}>
