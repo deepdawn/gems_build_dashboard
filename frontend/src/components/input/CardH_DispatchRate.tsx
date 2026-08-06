@@ -56,7 +56,7 @@ export const CardH_DispatchRate: React.FC<CardHProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center mr-4">
+        <div className="flex flex-col items-center justify-center mr-4 -mt-4">
           <span className="text-[12px] font-bold text-slate-500 mb-2">24h 출루율</span>
           <div className="w-[90px] h-[90px] relative">
             <ResponsiveContainer width="100%" height="100%">

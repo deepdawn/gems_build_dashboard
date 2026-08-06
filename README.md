@@ -68,6 +68,10 @@ npm run preview
 
 도메인 구매 여부에 따라 두 가지 방식으로 외부 접속 링크를 생성할 수 있습니다.
 
+> [!NOTE]
+> **터널링 접속 시 로컬호스트보다 느린 이유**
+> 백엔드 서버 없이 브라우저에서 대규모 파티션 데이터를 직접 다운로드하고 연산하는(DuckDB-WASM) 아키텍처 특성상, 로컬에서는 SSD를 통해 즉시 로딩되지만 터널링 환경에서는 로컬 PC의 인터넷 '업로드' 속도와 Cloudflare 엣지망을 거치는 네트워크 지연이 발생합니다. 정식 운영 시에는 `dist/` 빌드 결과물과 `public/data/`를 AWS S3나 Vercel 등에 정적 호스팅하면 1초 이내로 쾌적하게 로딩됩니다.
+
 ### 방법 A. 도메인 없이 즉시 임시 링크 발급 (Quick Tunnel)
 아직 도메인을 구매하지 않았거나, 회의 시 잠깐만 공유할 때 사용하는 가장 쉬운 방법입니다. **단, 터미널을 끄거나 재시작하면 링크 주소가 변경됩니다.**
 
@@ -133,3 +137,53 @@ npm run preview
    ```
 
 이제 브라우저에서 설정한 도메인(`https://dashboard.yourdomain.com`)으로 접속하면 외부에서도 안전하게 로컬 대시보드 환경에 접근할 수 있습니다. 로컬 PC가 켜져 있고 위 두 프로세스(serve, cloudflared)가 돌아가는 동안에는 고정 링크로 유지됩니다.
+
+---
+
+## ☁️ 클라우드 정적 호스팅 (GCS, AWS S3 등) 배포 가이드
+
+운영 환경(Production)에서 대시보드를 가장 쾌적하고 빠르게 제공하려면 프론트엔드 빌드 결과물(`dist/`)과 파티션 데이터(`public/data/`)를 클라우드 스토리지에 정적 호스팅하는 것을 강력히 권장합니다.
+
+### 💡 핵심 필수 설정 (매우 중요)
+DuckDB-WASM 엔진이 대규모 Parquet 파일을 통째로 다운로드하지 않고 **필요한 부분만 쏙쏙 골라 다운로드(HTTP Range Request)** 하도록 만들려면, 사용하시는 클라우드 스토리지(GCS, S3, R2 등) 버킷에 반드시 아래 두 가지 설정이 되어 있어야 합니다.
+
+1. **HTTP Range Request 지원**
+   - 대부분의 메이저 클라우드 오브젝트 스토리지는 기본적으로 헤더(`Accept-Ranges: bytes`)를 지원하므로 큰 문제가 없습니다.
+2. **CORS (교차 출처 리소스 공유) 규칙 세팅**
+   - 프론트엔드 도메인과 스토리지(데이터) 도메인이 다를 경우 브라우저가 보안상 요청을 차단하므로 CORS 규칙을 버킷에 추가해야 합니다.
+   - **허용 메소드(Methods)**: `GET`, `HEAD` 필수 (파일 유무 확인 시 HEAD 요청을 사용함)
+   - **노출 헤더(Expose Headers)**: `Content-Length`, `Content-Range` 필수 (이 두 헤더가 브라우저에 노출되어야 엔진이 파일 크기를 파악하고 부분 다운로드를 할 수 있습니다.)
+
+**✅ 구글 클라우드 스토리지(GCS) CORS 설정 예시 (cors.json):**
+```json
+[
+  {
+    "origin": ["https://dashboard.yourdomain.com"],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type", "Content-Length", "Content-Range", "Accept-Ranges"],
+    "maxAgeSeconds": 3600
+  }
+]
+```
+(설정 적용 명령어: `gsutil cors set cors.json gs://your-bucket-name`)
+
+이 세팅만 완료하면, 서버 인프라 유지보수 비용 없이 100% 정적 파일 구조만으로 초고속 엔터프라이즈급 대시보드를 전 세계 어디서든 무제한으로 서비스할 수 있습니다!
+
+---
+
+## ⚡️ Vercel 배포 가이드 (무료/가장 빠름)
+
+Vercel은 정적 파일과 프론트엔드 프레임워크를 글로벌 엣지(Edge) 네트워크에 가장 손쉽게 배포할 수 있는 서비스입니다. 본 프로젝트는 백엔드가 없는 정적 파일 기반이므로 Vercel의 무료 플랜(Hobby)으로도 매우 빠르고 안정적인 서비스가 가능하며, Range Request도 기본적으로 완벽하게 지원합니다.
+
+### 배포 방법
+1. 코드를 GitHub 레포지토리에 푸시(Push)합니다.
+2. [Vercel 대시보드](https://vercel.com)에 로그인 후 **Add New Project**를 클릭합니다.
+3. 해당 GitHub 레포지토리를 **Import** 합니다.
+4. 프로젝트 설정(Configure Project) 화면에서 아래와 같이 세팅합니다:
+   - **Framework Preset**: `Vite` (자동 감지됨)
+   - **Root Directory**: `frontend` (매우 중요! 반드시 `frontend`를 선택해야 합니다.)
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+5. **Deploy** 버튼을 클릭합니다.
+
+배포가 완료되면 Vercel에서 제공하는 `.vercel.app` 무료 도메인으로 대시보드에 즉시 접속할 수 있으며, 이 주소를 내부 관계자들에게 고정 링크로 공유하시면 됩니다! 데이터가 업데이트될 경우, 로컬에서 추출된 `.parquet` 파일들을 GitHub에 푸시하기만 하면 Vercel이 알아서 다시 빌드하여 최신 데이터를 반영해 줍니다.
