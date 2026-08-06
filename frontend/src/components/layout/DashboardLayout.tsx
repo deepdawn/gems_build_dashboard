@@ -24,8 +24,9 @@ export const DashboardLayout: React.FC<Props> = ({ children, activeTab }) => {
           <li><strong>대당 작업량</strong> = 재배치 + 배터리교체 건수 / 일평균 할당대수</li>
           <li><strong>목표 달성률</strong> = 총 매출 / 목표 매출 (MTD 비교)</li>
         </ul>
-        <div className="mt-1 px-1 text-slate-500 text-[13px]">
-          * 주 단위 조회 시 <strong>주간 목표 매출</strong>은 해당 월의 전체 일수를 7로 나눈 주차 수(Week) 비중에 따라 월간 목표를 분할하여 산출합니다.
+        <div className="mt-1 px-1 text-slate-500 text-[13px] leading-relaxed">
+          * 주 단위 조회 시 <strong>주간 목표 매출</strong>은 해당 월의 전체 일수를 7로 나눈 주차 수(Week) 비중에 따라 월간 목표를 분할하여 산출합니다.<br />
+          * 어드민에서 삭제 처리된 배치존은 제외됩니다.
         </div>
       </div>
 
