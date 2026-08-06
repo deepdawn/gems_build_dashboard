@@ -10,9 +10,10 @@ import { CardA_Allocation } from './CardA_Allocation';
 import { CardB_Deployment } from './CardB_Deployment';
 import { CardG_Battery } from './CardG_Battery';
 import { CardI_Points } from './CardI_Points';
+import { CardJ_ZoneDispatchList, ZoneDispatchData } from './CardJ_ZoneDispatchList';
 
 export const InputSection: React.FC = () => {
-  const { center, camp, dateType, selectedDate, device, queryTrigger, partitionsError } = useFilters();
+  const { center, camp, dateType, selectedDate, device, queryTrigger, partitionsError, setLoadingState } = useFilters();
   const { isReady, query } = useDuckDB();
   
   const [debugError, setDebugError] = useState<string | null>(null);
@@ -65,11 +66,14 @@ export const InputSection: React.FC = () => {
   const [prevActiveZoneRate, setPrevActiveZoneRate] = useState(0);
   const [companyActiveZoneRate, setCompanyActiveZoneRate] = useState(0);
 
+  const [zoneDispatchData, setZoneDispatchData] = useState<ZoneDispatchData[]>([]);
+
   useEffect(() => {
     let ignore = false;
     if (!isReady || !camp || !selectedDate) return;
 
     const fetchData = async () => {
+      setLoadingState(prev => ({ ...prev, input: true }));
       try {
         setDebugError(null);
         let year = 2026;
@@ -386,9 +390,74 @@ export const InputSection: React.FC = () => {
         setCompanyDispatchRate24h(cDispR);
         setDispatchRate24hCompanyDiff(cDisp - cDispR);
 
+        // 5. Zone Dispatch List (Card J)
+        const zoneDispatchCurrentQuery = `
+          SELECT 
+            배치존명, 
+            SUM(CASE WHEN "출루까지 시간" <= 24 THEN 배치수 ELSE 0 END) as d24,
+            SUM(CASE WHEN "출루까지 시간" <= 12 THEN 배치수 ELSE 0 END) as d12,
+            SUM(CASE WHEN "출루까지 시간" <= 6 THEN 배치수 ELSE 0 END) as d6,
+            SUM(배치수) as total_deploy
+          FROM deploy_used_time
+          WHERE 중지역 = '${camp}' AND ${dateCondition} ${devZone}
+          GROUP BY 배치존명
+        `;
+        const zoneDispatchPrevQuery = `
+          SELECT 
+            배치존명, 
+            SUM(CASE WHEN "출루까지 시간" <= 24 THEN 배치수 ELSE 0 END) as p24,
+            SUM(배치수) as p_total
+          FROM deploy_used_time
+          WHERE 중지역 = '${camp}' AND ${prevDateCondition} ${devZone}
+          GROUP BY 배치존명
+        `;
+
+        const [zCurrentRes, zPrevRes] = await Promise.all([
+          query(zoneDispatchCurrentQuery),
+          query(zoneDispatchPrevQuery)
+        ]);
+
+        const prevMap = new Map();
+        for (const r of zPrevRes) {
+          const pt = Number(r.p_total) || 0;
+          const p24 = Number(r.p24) || 0;
+          prevMap.set(r.배치존명, pt > 0 ? (p24 / pt) * 100 : 0);
+        }
+
+        const zData: ZoneDispatchData[] = [];
+        for (const r of zCurrentRes) {
+          const tot = Number(r.total_deploy) || 0;
+          if (tot > 0) {
+            const d24 = (Number(r.d24) / tot) * 100;
+            const d12 = (Number(r.d12) / tot) * 100;
+            const d6 = (Number(r.d6) / tot) * 100;
+            const p24Rate = prevMap.get(r.배치존명) || 0;
+            
+            zData.push({
+              zoneName: r.배치존명,
+              d6, d12, d24,
+              totalDeploy: tot,
+              diff24: d24 - p24Rate
+            });
+          }
+        }
+
+        zData.sort((a, b) => {
+          if (Math.abs(a.d24 - b.d24) > 0.01) {
+            return a.d24 - b.d24; // 24h asc
+          }
+          return b.totalDeploy - a.totalDeploy; // deploy desc
+        });
+
+        setZoneDispatchData(zData);
+
       } catch (err: any) {
         console.error("Failed to fetch input section data:", err);
         setDebugError(err.toString());
+      } finally {
+        if (!ignore) {
+          setLoadingState(prev => ({ ...prev, input: false }));
+        }
       }
     };
 
@@ -398,6 +467,7 @@ export const InputSection: React.FC = () => {
     
     return () => {
       ignore = true;
+      setLoadingState(prev => ({ ...prev, input: false }));
     };
   }, [isReady, queryTrigger, center, camp, dateType, selectedDate, device]);
 
@@ -467,6 +537,10 @@ export const InputSection: React.FC = () => {
           companyActiveZoneRate={companyActiveZoneRate}
           comparisonLabel={dateType === '주 단위' ? '전주' : '전월'}
         />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <CardJ_ZoneDispatchList data={zoneDispatchData} periodLabel={selectedDate} />
       </div>
     </div>
   );

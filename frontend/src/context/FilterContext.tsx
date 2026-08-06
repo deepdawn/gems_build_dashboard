@@ -18,6 +18,8 @@ type FilterContextType = {
   partitionsError: string | null;
   /** 데이터 쿼리를 새로 실행하도록 강제 트리거하는 카운터 */
   queryTrigger: number;
+  loadingState: { input: boolean; output: boolean; map: boolean };
+  setLoadingState: React.Dispatch<React.SetStateAction<{ input: boolean; output: boolean; map: boolean }>>;
 };
 
 const FilterContext = createContext<FilterContextType | undefined>(undefined);
@@ -41,6 +43,7 @@ export function FilterProvider({ children }: { children: ReactNode }) {
   const [partitionsReady, setPartitionsReady] = useState(false);
   const [partitionsError, setPartitionsError] = useState<string | null>(null);
   const [queryTrigger, setQueryTrigger] = useState(0);
+  const [loadingState, setLoadingState] = useState({ input: false, output: false, map: false });
   const loadingRef = useRef(false);
 
   // 파티션 로딩: isReady, selectedDate, dateType 가 변할 때
@@ -108,7 +111,12 @@ export function FilterProvider({ children }: { children: ReactNode }) {
 
   return (
     <FilterContext.Provider
-      value={{ center, setCenter, camp, setCamp, dateType, setDateType, selectedDate, setSelectedDate, device, setDevice, partitionsReady, partitionsError, queryTrigger }}
+      value={{ 
+        center, setCenter, camp, setCamp, dateType, setDateType, 
+        selectedDate, setSelectedDate, device, setDevice, 
+        partitionsReady, partitionsError, queryTrigger,
+        loadingState, setLoadingState 
+      }}
     >
       {children}
     </FilterContext.Provider>

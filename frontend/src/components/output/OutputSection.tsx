@@ -6,7 +6,7 @@ import { useFilters } from '../../context/FilterContext';
 import { useDuckDB } from '../../hooks/useDuckDB';
 
 export const OutputSection: React.FC = () => {
-  const { center, camp, dateType, selectedDate, device, queryTrigger } = useFilters();
+  const { center, camp, dateType, selectedDate, device, queryTrigger, setLoadingState } = useFilters();
   const { isReady, query } = useDuckDB();
   
   const [data, setData] = useState({
@@ -32,6 +32,7 @@ export const OutputSection: React.FC = () => {
     let ignore = false;
 
     const fetchData = async () => {
+      setLoadingState(prev => ({ ...prev, output: true }));
       try {
         let year = 2026;
         let month = 1;
@@ -258,6 +259,10 @@ export const OutputSection: React.FC = () => {
       } catch (err: any) {
         console.error("Failed to fetch output data:", err);
         setDebugError(err.toString());
+      } finally {
+        if (!ignore) {
+          setLoadingState(prev => ({ ...prev, output: false }));
+        }
       }
     };
 
@@ -265,7 +270,10 @@ export const OutputSection: React.FC = () => {
       fetchData();
     }
 
-    return () => { ignore = true; };
+    return () => { 
+      ignore = true; 
+      setLoadingState(prev => ({ ...prev, output: false }));
+    };
   }, [isReady, queryTrigger, center, camp, dateType, selectedDate, device]);
 
   const totalProgress = data.targetRevenue > 0 ? (data.totalRevenue / data.targetRevenue) * 100 : 0;

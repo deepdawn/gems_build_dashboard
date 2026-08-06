@@ -12,7 +12,7 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 export function KeplerMapPage() {
   const dispatch = useDispatch();
   const { isReady, query } = useDuckDB();
-  const { center, camp, dateType, selectedDate, device, queryTrigger, partitionsReady } = useFilters();
+  const { center, camp, dateType, selectedDate, device, queryTrigger, partitionsReady, setLoadingState } = useFilters();
   const [dataLoaded, setDataLoaded] = useState(false);
 
   // 최초 마운트 시 한국 좌표로 맵 상태를 설정합니다.
@@ -35,6 +35,7 @@ export function KeplerMapPage() {
     let cancelled = false;
 
     const loadData = async () => {
+      setLoadingState(prev => ({ ...prev, map: true }));
       try {
         setDataLoaded(false);
 
@@ -337,6 +338,10 @@ export function KeplerMapPage() {
       } catch (e: any) {
         console.error("[GeoMap] Error loading map data:", e);
         setDataLoaded(true);
+      } finally {
+        if (!cancelled) {
+          setLoadingState(prev => ({ ...prev, map: false }));
+        }
       }
     };
 
@@ -344,6 +349,7 @@ export function KeplerMapPage() {
 
     return () => {
       cancelled = true;
+      setLoadingState(prev => ({ ...prev, map: false }));
     };
   }, [isReady, partitionsReady, center, camp, dateType, selectedDate, device, queryTrigger, dispatch, query]);
 
