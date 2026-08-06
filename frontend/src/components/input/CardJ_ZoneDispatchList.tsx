@@ -7,6 +7,8 @@ export interface ZoneDispatchData {
   d12: number;
   d24: number;
   totalDeploy: number;
+  empCount: number;
+  alightCount: number;
   diff24: number;
 }
 
@@ -29,6 +31,8 @@ export const CardJ_ZoneDispatchList: React.FC<CardJProps> = ({ data, periodLabel
             <tr>
               <th scope="col" className="px-4 py-3 font-bold whitespace-nowrap">배치존명</th>
               <th scope="col" className="px-4 py-3 font-bold text-right whitespace-nowrap">총 배치수</th>
+              <th scope="col" className="px-4 py-3 font-bold text-right whitespace-nowrap">직원 배치 수</th>
+              <th scope="col" className="px-4 py-3 font-bold text-right whitespace-nowrap">고객 하차 수</th>
               <th scope="col" className="px-4 py-3 font-bold text-right whitespace-nowrap">6h 출루율</th>
               <th scope="col" className="px-4 py-3 font-bold text-right whitespace-nowrap">12h 출루율</th>
               <th scope="col" className="px-4 py-3 font-bold text-right whitespace-nowrap">24h 출루율</th>
@@ -41,6 +45,8 @@ export const CardJ_ZoneDispatchList: React.FC<CardJProps> = ({ data, periodLabel
                 <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="px-4 py-2 font-medium text-slate-900 truncate max-w-[200px]" title={row.zoneName}>{row.zoneName}</td>
                   <td className="px-4 py-2 text-right">{row.totalDeploy.toLocaleString()}대</td>
+                  <td className="px-4 py-2 text-right">{row.empCount.toLocaleString()}대</td>
+                  <td className="px-4 py-2 text-right">{row.alightCount.toLocaleString()}대</td>
                   <td className="px-4 py-2 text-right">{row.d6.toFixed(1)}%</td>
                   <td className="px-4 py-2 text-right">{row.d12.toFixed(1)}%</td>
                   <td className="px-4 py-2 text-right font-bold">{row.d24.toFixed(1)}%</td>
@@ -57,7 +63,7 @@ export const CardJ_ZoneDispatchList: React.FC<CardJProps> = ({ data, periodLabel
               ))
             ) : (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">데이터가 없습니다.</td>
+                <td colSpan={8} className="px-4 py-8 text-center text-slate-500">데이터가 없습니다.</td>
               </tr>
             )}
           </tbody>

@@ -11,6 +11,7 @@ import { CardB_Deployment } from './CardB_Deployment';
 import { CardG_Battery } from './CardG_Battery';
 import { CardI_Points } from './CardI_Points';
 import { CardJ_ZoneDispatchList, type ZoneDispatchData } from './CardJ_ZoneDispatchList';
+import { CardK_ZoneStatusList, type ZoneStatusData } from './CardK_ZoneStatusList';
 
 export const InputSection: React.FC = () => {
   const { center, camp, dateType, selectedDate, device, queryTrigger, partitionsError, setLoadingState } = useFilters();
@@ -67,6 +68,7 @@ export const InputSection: React.FC = () => {
   const [companyActiveZoneRate, setCompanyActiveZoneRate] = useState(0);
 
   const [zoneDispatchData, setZoneDispatchData] = useState<ZoneDispatchData[]>([]);
+  const [zoneStatusData, setZoneStatusData] = useState<ZoneStatusData[]>([]);
 
   useEffect(() => {
     let ignore = false;
@@ -265,7 +267,7 @@ export const InputSection: React.FC = () => {
           const batteryCurrentQuery = `
             SELECT SUM(battery_0_20) as b_0_20, SUM(total_vehicle_count) as total
             FROM battery_data 
-            WHERE 중지역 = '${camp}' AND ${dateCondition} ${getDeviceCond('기기타입')}
+            WHERE 중지역 = '${camp}' AND ${dateCondition.replace(/date/g, 'dt')} ${getDeviceCond('기기타입')}
           `;
           const batCurrentRes = await query(batteryCurrentQuery);
           if (batCurrentRes.length > 0) {
@@ -397,6 +399,8 @@ export const InputSection: React.FC = () => {
             SUM(CASE WHEN "출루까지 시간" <= 24 THEN 배치수 ELSE 0 END) as d24,
             SUM(CASE WHEN "출루까지 시간" <= 12 THEN 배치수 ELSE 0 END) as d12,
             SUM(CASE WHEN "출루까지 시간" <= 6 THEN 배치수 ELSE 0 END) as d6,
+            SUM(CASE WHEN "배치 구분" = 'ALIGHT' THEN 배치수 ELSE 0 END) as alightCount,
+            SUM(CASE WHEN "배치 구분" != 'ALIGHT' OR "배치 구분" IS NULL THEN 배치수 ELSE 0 END) as empCount,
             SUM(배치수) as total_deploy
           FROM deploy_used_time
           WHERE 중지역 = '${camp}' AND ${dateCondition} ${devZone}
@@ -431,12 +435,15 @@ export const InputSection: React.FC = () => {
             const d24 = (Number(r.d24) / tot) * 100;
             const d12 = (Number(r.d12) / tot) * 100;
             const d6 = (Number(r.d6) / tot) * 100;
+            const alightCount = Number(r.alightCount) || 0;
+            const empCount = Number(r.empCount) || 0;
             const p24Rate = prevMap.get(r.배치존명) || 0;
             
             zData.push({
               zoneName: r.배치존명,
               d6, d12, d24,
               totalDeploy: tot,
+              empCount, alightCount,
               diff24: d24 - p24Rate
             });
           }
@@ -450,6 +457,33 @@ export const InputSection: React.FC = () => {
         });
 
         setZoneDispatchData(zData);
+
+        // 6. Zone Status List (Card K)
+        const zoneStatusQuery = `
+          SELECT
+            a.배치존명,
+            COALESCE(b.total_deploy, 0) as total_deploy,
+            CASE WHEN COALESCE(b.total_deploy, 0) >= 1 THEN '운영 배치존' ELSE '미관리 배치존 의심' END as status
+          FROM (
+            SELECT DISTINCT 배치존명
+            FROM deploy_used_time
+            WHERE 중지역 = '${camp}' ${devZone}
+          ) a
+          LEFT JOIN (
+            SELECT 배치존명, SUM(배치수) as total_deploy
+            FROM deploy_used_time
+            WHERE 중지역 = '${camp}' AND ${dateCondition} ${devZone}
+            GROUP BY 배치존명
+          ) b ON a.배치존명 = b.배치존명
+          ORDER BY total_deploy ASC, a.배치존명 ASC
+        `;
+        const kRes = await query(zoneStatusQuery);
+        const kData: ZoneStatusData[] = kRes.map((r: any) => ({
+          zoneName: r.배치존명,
+          totalDeploy: Number(r.total_deploy) || 0,
+          status: r.status
+        }));
+        setZoneStatusData(kData);
 
       } catch (err: any) {
         console.error("Failed to fetch input section data:", err);
@@ -541,6 +575,10 @@ export const InputSection: React.FC = () => {
 
       <div className="grid grid-cols-2 gap-4 mb-4">
         <CardJ_ZoneDispatchList data={zoneDispatchData} periodLabel={selectedDate} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <CardK_ZoneStatusList data={zoneStatusData} periodLabel={selectedDate} />
       </div>
     </div>
   );
