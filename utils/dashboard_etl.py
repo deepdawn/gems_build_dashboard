@@ -152,7 +152,7 @@ def main():
                         ])
                         
                     # 프론트엔드(Kepler 맵)에서 사용하는 필수 컬럼만 남기고 모두 제거하여 극단적 용량 다이어트
-                    keep_cols = ['start_lat', 'start_lng', 'end_lat', 'end_lng', '기기구분', 'date']
+                    keep_cols = ['start_lat', 'start_lng', 'end_lat', 'end_lng', '기기구분', 'date', 'high_region_name', 'middle_region_name']
                     df_orders = df_orders.select([col for col in keep_cols if col in df_orders.columns])
                 
                 out_path = os.path.join(frontend_data_dir, f"orders.parquet")
