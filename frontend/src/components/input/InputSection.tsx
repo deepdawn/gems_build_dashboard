@@ -507,7 +507,7 @@ export const InputSection: React.FC = () => {
 
   return (
     <div>
-      <h2 className="font-bold text-slate-800 text-lg mb-3 text-left">2. INPUT</h2>
+      <h2 className="font-bold text-slate-800 text-lg mb-3 text-left">2. INPUT ({camp}, {selectedDate})</h2>
       {partitionsError && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           <strong>Init Error:</strong> {partitionsError}
@@ -541,9 +541,9 @@ export const InputSection: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-4">
-        <CardC_TaskPerAsset data={taskChart} currentValue={taskValue} centerAvg={taskCenter} companyAvg={taskCompany} periodLabel={selectedDate} />
-        <CardD_ReallocPerAsset data={reallocChart} currentValue={reallocValue} centerAvg={reallocCenter} companyAvg={reallocCompany} periodLabel={selectedDate} />
-        <CardE_BatteryPerAsset data={batteryChart} currentValue={batteryValue} centerAvg={batteryCenter} companyAvg={batteryCompany} periodLabel={selectedDate} />
+        <CardC_TaskPerAsset data={taskChart} currentValue={taskValue} centerAvg={taskCenter} companyAvg={taskCompany} />
+        <CardD_ReallocPerAsset data={reallocChart} currentValue={reallocValue} centerAvg={reallocCenter} companyAvg={reallocCompany} />
+        <CardE_BatteryPerAsset data={batteryChart} currentValue={batteryValue} centerAvg={batteryCenter} companyAvg={batteryCompany} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-4">

@@ -282,7 +282,7 @@ export const OutputSection: React.FC = () => {
 
   return (
     <div className="mb-8">
-      <h2 className="font-bold text-slate-800 text-lg mb-3 text-left">1. OUTPUT</h2>
+      <h2 className="font-bold text-slate-800 text-lg mb-3 text-left">1. OUTPUT ({camp}, {selectedDate})</h2>
       {debugError && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           <strong>Error:</strong> {debugError}

@@ -6,10 +6,9 @@ interface CardEProps {
   currentValue?: number;
   centerAvg?: number;
   companyAvg?: number;
-  periodLabel?: string;
 };
 
-export const CardE_BatteryPerAsset: React.FC<CardEProps> = ({ data = [], currentValue = 0, centerAvg = 0, companyAvg = 0, periodLabel = '' }) => {
+export const CardE_BatteryPerAsset: React.FC<CardEProps> = ({ data = [], currentValue = 0, centerAvg = 0, companyAvg = 0 }) => {
   const centerDiff = currentValue - centerAvg;
   const companyDiff = currentValue - companyAvg;
 
@@ -21,7 +20,7 @@ export const CardE_BatteryPerAsset: React.FC<CardEProps> = ({ data = [], current
           <span className="font-bold text-green-900 text-lg">대당 배터리 교체</span>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-black text-slate-800">{periodLabel ? `${periodLabel}: ` : ''}{currentValue.toFixed(2)}건</div>
+          <div className="text-2xl font-black text-slate-800">{currentValue.toFixed(2)}건</div>
           <div className="text-[10px] text-slate-500 font-medium">
             센터평균({centerAvg.toFixed(2)}): <span className={centerDiff >= 0 ? 'text-blue-500' : 'text-red-500'}>{centerDiff > 0 ? '+' : ''}{centerDiff.toFixed(2)}</span>
             {' | '}전사({companyAvg.toFixed(2)}): <span className={companyDiff >= 0 ? 'text-blue-500' : 'text-red-500'}>{companyDiff > 0 ? '+' : ''}{companyDiff.toFixed(2)}</span>
