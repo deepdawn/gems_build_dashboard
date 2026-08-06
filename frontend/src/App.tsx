@@ -4,7 +4,7 @@ import { DashboardLayout } from './components/layout/DashboardLayout';
 import { OutputSection } from './components/output/OutputSection';
 import { InputSection } from './components/input/InputSection';
 import { useDuckDB } from './hooks/useDuckDB';
-import { FilterProvider } from './context/FilterContext';
+import { FilterProvider, useFilters } from './context/FilterContext';
 import { KeplerMapPage } from './components/map/KeplerMapPage';
 
 function AppContent() {

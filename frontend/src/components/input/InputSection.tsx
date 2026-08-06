@@ -10,7 +10,7 @@ import { CardA_Allocation } from './CardA_Allocation';
 import { CardB_Deployment } from './CardB_Deployment';
 import { CardG_Battery } from './CardG_Battery';
 import { CardI_Points } from './CardI_Points';
-import { CardJ_ZoneDispatchList, ZoneDispatchData } from './CardJ_ZoneDispatchList';
+import { CardJ_ZoneDispatchList, type ZoneDispatchData } from './CardJ_ZoneDispatchList';
 
 export const InputSection: React.FC = () => {
   const { center, camp, dateType, selectedDate, device, queryTrigger, partitionsError, setLoadingState } = useFilters();
