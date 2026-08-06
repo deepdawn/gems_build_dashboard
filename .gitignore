@@ -10,9 +10,7 @@ dist/
 # Mac
 .DS_Store
 
-# Data (Avoid pushing large generated parquet files)
-frontend/public/data/*.parquet
-
+# Data (Now allowing parquet files to be pushed to GitHub for Vercel deployment)
 # Logs
 logs/
 

@@ -17,4 +17,10 @@ echo "[$(date)] Copying data to dist..."
 # 빌드된 dist 폴더에서 데이터를 바로 읽을 수 있도록 public/data 데이터를 복사
 cp -r "$PROJECT_ROOT/frontend/public/data/"* "$PROJECT_ROOT/frontend/dist/data/"
 
+echo "[$(date)] Pushing updated data to GitHub..."
+cd "$PROJECT_ROOT" || exit 1
+git add frontend/public/data/*.parquet
+git commit -m "Auto-update dashboard data" || echo "No changes to commit"
+git push origin main
+
 echo "[$(date)] ETL Process Completed."
