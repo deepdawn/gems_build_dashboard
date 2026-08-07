@@ -15,9 +15,10 @@ export interface ZoneDispatchData {
 interface CardJProps {
   data: ZoneDispatchData[];
   periodLabel?: string;
+  dateType?: string;
 }
 
-export const CardJ_ZoneDispatchList: React.FC<CardJProps> = ({ data, periodLabel }) => {
+export const CardJ_ZoneDispatchList: React.FC<CardJProps> = ({ data, periodLabel, dateType }) => {
   return (
     <div className="bg-white border border-blue-200 rounded-lg p-5 shadow-sm text-left col-span-2">
       <div className="flex items-center gap-2 mb-4">
@@ -36,7 +37,7 @@ export const CardJ_ZoneDispatchList: React.FC<CardJProps> = ({ data, periodLabel
               <th scope="col" className="px-4 py-3 font-bold text-right whitespace-nowrap">6h 출루율</th>
               <th scope="col" className="px-4 py-3 font-bold text-right whitespace-nowrap">12h 출루율</th>
               <th scope="col" className="px-4 py-3 font-bold text-right whitespace-nowrap">24h 출루율</th>
-              <th scope="col" className="px-4 py-3 font-bold text-right whitespace-nowrap">전주 대비 24h</th>
+              <th scope="col" className="px-4 py-3 font-bold text-right whitespace-nowrap">{dateType === '월 누적' ? '전월 대비 24h' : '전주 대비 24h'}</th>
             </tr>
           </thead>
           <tbody>

@@ -18,15 +18,16 @@ export const DashboardLayout: React.FC<Props> = ({ children, activeTab }) => {
           <span className="bg-slate-200 p-1 rounded">ℹ️</span> 핵심 지표 산식 안내
         </div>
         <ul className="grid grid-cols-2 gap-x-4 gap-y-2 list-disc list-inside px-1">
-          <li><strong>대당회전수 (기기당 이용 횟수)</strong> = 총 운행 수 / 총 할당대수</li>
-          <li><strong>대당매출 (기기당 매출)</strong> = 총 매출 / 총 할당대수</li>
-          <li><strong>배치존 활성도</strong> = 운영 배치존 수 (1대 이상 배치한) / 캠프 소속 배치존 수</li>
-          <li><strong>대당 작업량</strong> = 재배치 + 배터리교체 건수 / 일평균 할당대수</li>
           <li><strong>목표 달성률</strong> = 총 매출 / 목표 매출 (MTD 비교)</li>
+          <li><strong>대당매출 (기기당 매출)</strong> = 총 매출 / 총 할당대수</li>
+          <li><strong>대당회전수 (기기당 이용 횟수)</strong> = 총 운행 수 / 총 할당대수</li>
+          <li><strong>대당 작업량</strong> = 재배치 + 배터리교체 건수 / 일평균 할당대수</li>
+          <li><strong>배치존 활성도</strong> = 운영 배치존 수 (1대 이상 배치한) / 캠프 소속 배치존 수</li>
+          <li><strong>배치존 발굴맵 메뉴</strong> = 운행 데이터 기반으로, 운행이 많을 수록 색이 진해지는 히트맵입니다.</li>
         </ul>
         <div className="mt-1 px-1 text-slate-500 text-[13px] leading-relaxed">
           * 주 단위 조회 시 <strong>주간 목표 매출</strong>은 해당 월의 전체 일수를 7로 나눈 주차 수(Week) 비중에 따라 월간 목표를 분할하여 산출합니다.<br />
-          * 어드민에서 삭제 처리된 배치존은 제외됩니다.
+          * 배치존 관련 지표 모수는 그라파나와 동일한 모수입니다.
         </div>
       </div>
 

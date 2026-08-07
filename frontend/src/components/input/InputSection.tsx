@@ -574,7 +574,7 @@ export const InputSection: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-4">
-        <CardJ_ZoneDispatchList data={zoneDispatchData} periodLabel={selectedDate} />
+        <CardJ_ZoneDispatchList data={zoneDispatchData} periodLabel={selectedDate} dateType={dateType} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-4">
